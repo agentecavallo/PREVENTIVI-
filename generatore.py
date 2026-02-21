@@ -1,81 +1,72 @@
 import streamlit as st
 import pandas as pd
+import requests
+from io import BytesIO
 import os
 
+# Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide")
-
 st.title("📄 Realizzatore di Offerte")
 
-# Nome del file AGGIORNATO con la maiuscola
+# Nome del tuo file Excel (assicurati che si chiami esattamente così a sinistra)
 file_path = 'Listino_agente.xlsx'
 
+# Controlliamo se il file esiste
 if not os.path.exists(file_path):
-    st.error(f"❌ Non trovo il file: {file_path}")
-    st.info(f"File presenti nella cartella: {os.listdir()}")
+    st.error(f"❌ File '{file_path}' non trovato nella colonna a sinistra!")
+    st.info("Trascina il file Excel dentro GitHub Codespaces per continuare.")
 else:
-    try:
-        # Carichiamo i dati
-        df = pd.read_excel(file_path)
-        df.columns = df.columns.str.strip() # Pulizia nomi colonne
+    # Carichiamo i dati
+    df = pd.read_excel(file_path)
+    df.columns = df.columns.str.strip() # Puliamo i nomi delle colonne
+
+    # Barra di ricerca nella colonna laterale
+    st.sidebar.header("Filtri")
+    ricerca = st.sidebar.text_input("Cerca ARTICOLO (es. nome o codice):").upper()
+
+    if ricerca:
+        # Cerchiamo l'articolo nel foglio Excel
+        risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
         
-        # Barra laterale per la ricerca
-        st.sidebar.header("Ricerca Prodotti")
-        ricerca = st.sidebar.text_input("Inserisci nome ARTICOLO:").upper()
-
-        if ricerca:
-    risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
-    
-    # CONTROLLA QUI SOTTO: deve essere 'risultato', non 'resultado'
-    if not risultato.empty:
+        if not risultato.empty:
+            # Se ci sono più risultati, facciamo scegliere quello esatto
+            scelta = st.selectbox("Seleziona l'articolo esatto:", risultato['ARTICOLO'])
+            d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
             
-            if not risultato.empty:
-                # Tabella riassuntiva
-                st.write("### Risultati trovati:")
-                st.dataframe(risultato[['ARTICOLO', 'RANGE TAGLIE', 'LISTINO', 'IMMAGINE']])
+            st.divider()
+            
+            # Creiamo due colonne per la visualizzazione
+            col1, col2 = st.columns([1, 1])
+            
+            with col1:
+                st.subheader("📋 Dettagli Prodotto")
+                st.write(f"**Modello:** {d['ARTICOLO']}")
+                st.write(f"**Range Taglie:** {d['RANGE TAGLIE']}")
+                st.markdown(f"### Prezzo: {d['LISTINO']} €")
                 
-                # Selezione singola
-                scelta = st.selectbox("Scegli l'articolo esatto per il preventivo:", risultato['ARTICOLO'])
-                d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
-                
-                st.divider()
-                
-                # Visualizzazione finale
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    st.subheader(f"Scheda: {d['ARTICOLO']}")
-                    st.write(f"**Range Taglie:** {d['RANGE TAGLIE']}")
-                    st.write(f"**Prezzo Unitario:** {d['LISTINO']} €")
-                
-                with col2:
-                    st.subheader("Immagine Prodotto")
-                    
-                    import requests
-                    from io import BytesIO
+                # Spazio per eventuali note o tasti futuri
+                st.info("Puoi usare lo screenshot di questa pagina per inviare l'offerta rapida.")
 
-                    url_pulito = str(d['IMMAGINE']).strip()
-
+            with col2:
+                st.subheader("📸 Immagine")
+                url_img = str(d['IMMAGINE']).strip()
+                
+                if url_img.lower().startswith('http'):
                     try:
-                        # Proviamo a scaricare l'immagine come se fossimo un browser reale
+                        # Simuliamo un browser per scaricare l'immagine (evita blocchi)
                         headers = {'User-Agent': 'Mozilla/5.0'}
-                        response = requests.get(url_pulito, headers=headers, timeout=10)
-                        
-                        if response.status_code == 200:
-                            # Se lo scaricamento riesce, mostriamo i dati dell'immagine
-                            immagine_bytes = BytesIO(response.content)
-                            st.image(immagine_bytes, use_container_width=True)
+                        res = requests.get(url_img, headers=headers, timeout=10)
+                        if res.status_code == 200:
+                            st.image(BytesIO(res.content), caption=d['ARTICOLO'], use_container_width=True)
                         else:
-                            st.error(f"Il sito blocca l'accesso (Errore {response.status_code})")
-                            st.write(f"[Apri immagine nel browser]({url_pulito})")
-                    
+                            st.warning("⚠️ Il sito non permette la visualizzazione automatica.")
+                            st.write(f"[Clicca qui per vedere la foto]({url_img})")
                     except Exception as e:
-                        st.warning("Impossibile caricare l'anteprima automatica.")
-                        st.write(f"🔗 [Clicca qui per vedere la foto]({url_pulito})") 
-                    
-            else:
-                st.warning("Nessun articolo trovato.")
+                        st.error("Errore nel caricamento dell'immagine.")
+                        st.write(f"🔗 [Link Diretto Foto]({url_img})")
+                else:
+                    st.warning("Nessun link immagine trovato per questo articolo.")
         else:
-            st.info("👈 Usa la barra a sinistra per cercare un articolo nel listino.")
-
-    except Exception as e:
-        st.error(f"Errore durante l'apertura dell'Excel: {e}")
+            st.warning("Nessun articolo trovato con questo nome.")
+    else:
+        st.info("👈 Digita il nome di un articolo nella barra a sinistra per iniziare.")
