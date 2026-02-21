@@ -48,16 +48,25 @@ else:
                 with col2:
                     st.subheader("Immagine Prodotto")
                     
-                    # Puliamo il contenuto della cella da eventuali spazi bianchi
-                    url_immagine = str(d['IMMAGINE']).strip()
+                    # Estraiamo il valore e puliamolo con estrema cura
+                    url_raw = d['IMMAGINE']
                     
-                    if url_immagine.startswith('http'):
-                        # Proviamo a mostrare l'immagine
+                    # Trasformiamolo in stringa e togliamo spazi o caratteri invisibili
+                    url_pulito = str(url_raw).strip()
+                    
+                    # Debug: facciamo apparire il link per sicurezza (puoi cliccarlo per test)
+                    st.write(f"[Clicca qui per verificare il link]({url_pulito})")
+
+                    if url_pulito.lower().startswith('http'):
                         try:
-                            st.image(url_immagine, caption=d['ARTICOLO'], use_container_width=True)
+                            # Proviamo a caricare l'immagine
+                            st.image(url_pulito, use_container_width=True)
                         except Exception as e:
-                            st.error("Non riesco a caricare il link come immagine.")
-                            st.write(f"Link trovato: {url_immagine}")
+                            st.error("Errore tecnico nel caricamento dell'immagine.")
+                            st.info("Nota: Alcuni siti bloccano l'accesso diretto alle immagini da altre app.")
+                    else:
+                        st.warning("⚠️ Il link non sembra iniziare con http o https")
+                        st.write(f"Contenuto rilevato: {url_pulito}")
                     else:
                         st.warning("Il contenuto non sembra un link valido.")
                         st.write(f"Testo nella cella: {url_immagine}") 
