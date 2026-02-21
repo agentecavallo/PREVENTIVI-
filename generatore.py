@@ -1,47 +1,59 @@
 import streamlit as st
 import pandas as pd
-import requests
-from io import BytesIO
 import os
 
 st.set_page_config(page_title="Generatore Preventivi", layout="wide")
+
 st.title("📄 Realizzatore di Offerte")
 
+# Nome del file AGGIORNATO con la maiuscola
 file_path = 'Listino_agente.xlsx'
 
 if not os.path.exists(file_path):
-    st.error(f"File {file_path} non trovato!")
+    st.error(f"❌ Non trovo il file: {file_path}")
+    st.info(f"File presenti nella cartella: {os.listdir()}")
 else:
-    df = pd.read_excel(file_path)
-    df.columns = df.columns.str.strip()
-
-    ricerca = st.sidebar.text_input("Cerca ARTICOLO:").upper()
-
-    if ricerca:
-        risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
+    try:
+        # Carichiamo i dati
+        df = pd.read_excel(file_path)
+        df.columns = df.columns.str.strip() # Pulizia nomi colonne
         
-        if not resultado.empty:
-            scelta = st.selectbox("Seleziona l'articolo:", risultato['ARTICOLO'])
-            d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
+        # Barra laterale per la ricerca
+        st.sidebar.header("Ricerca Prodotti")
+        ricerca = st.sidebar.text_input("Inserisci nome ARTICOLO:").upper()
+
+        if ricerca:
+            # Filtriamo (senza considerare la colonna A)
+            risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
             
-            st.divider()
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Dettagli")
-                st.write(f"**Modello:** {d['ARTICOLO']}")
-                st.write(f"**Taglie:** {d['RANGE TAGLIE']}")
-                st.write(f"**Prezzo:** {d['LISTINO']} €")
-            
-            with col2:
-                st.subheader("Immagine")
-                url_img = str(d['IMMAGINE']).strip()
-                try:
-                    headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(url_img, headers=headers, timeout=10)
-                    if res.status_code == 200:
-                        st.image(BytesIO(res.content), use_container_width=True)
-                    else:
-                        st.write(f"🔗 [Vedi Foto nel Browser]({url_img})")
-                except:
-                    st.write(f"🔗 [Link Immagine]({url_img})")
+            if not risultato.empty:
+                # Tabella riassuntiva
+                st.write("### Risultati trovati:")
+                st.dataframe(risultato[['ARTICOLO', 'RANGE TAGLIE', 'LISTINO', 'IMMAGINE']])
+                
+                # Selezione singola
+                scelta = st.selectbox("Scegli l'articolo esatto per il preventivo:", risultato['ARTICOLO'])
+                d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
+                
+                st.divider()
+                
+                # Visualizzazione finale
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.subheader(f"Scheda: {d['ARTICOLO']}")
+                    st.write(f"**Range Taglie:** {d['RANGE TAGLIE']}")
+                    st.write(f"**Prezzo Unitario:** {d['LISTINO']} €")
+                
+                with col2:
+                    st.subheader("Immagine Prodotto")
+                    # Se nella colonna c'è un link o un nome file, lo scriviamo
+                    st.code(d['IMMAGINE']) 
+                    
+            else:
+                st.warning("Nessun articolo trovato.")
+        else:
+            st.info("👈 Usa la barra a sinistra per cercare un articolo nel listino.")
+
+    except Exception as e:
+        st.error(f"Errore durante l'apertura dell'Excel: {e}")
