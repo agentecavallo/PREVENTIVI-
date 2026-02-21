@@ -47,8 +47,16 @@ else:
                 
                 with col2:
                     st.subheader("Immagine Prodotto")
-                    # Se nella colonna c'è un link o un nome file, lo scriviamo
-                    st.code(d['IMMAGINE']) 
+                    
+                    # Prendiamo il link dalla colonna IMMAGINE
+                    url_immagine = d['IMMAGINE']
+                    
+                    # Verifichiamo se il link esiste e non è vuoto
+                    if pd.notna(url_immagine) and str(url_immagine).startswith('http'):
+                        st.image(url_immagine, caption=f"Foto {d['ARTICOLO']}", use_container_width=True)
+                    else:
+                        st.warning("⚠️ Immagine non disponibile o link non valido")
+                        st.write(f"Contenuto cella: {url_immagine}") # Questo ci aiuta a capire cosa c'è scritto 
                     
             else:
                 st.warning("Nessun articolo trovato.")
