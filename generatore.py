@@ -1,58 +1,59 @@
 import streamlit as st
 import pandas as pd
+import os
 
-# Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide")
 
-st.title("uD83DuDCC4 Realizzatore di Offerte")
-st.write("Carica il tuo listino e crea un preventivo in un click.")
+st.title("📄 Realizzatore di Offerte")
 
-# 1. Caricamento File
-file_path = 'listino_agente.xlsx'
+# Nome del file AGGIORNATO con la maiuscola
+file_path = 'Listino_agente.xlsx'
 
-try:
-    df = pd.read_excel(file_path)
-    # Puliamo i nomi delle colonne
-    df.columns = df.columns.str.strip()
-    
-    # 2. Ricerca Articolo (Interfaccia Grafica)
-    st.sidebar.header("Filtri di Ricerca")
-    ricerca = st.sidebar.text_input("Cerca l'ARTICOLO:", "").upper()
-
-    if ricerca:
-        # Filtriamo i dati
-        risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
+if not os.path.exists(file_path):
+    st.error(f"❌ Non trovo il file: {file_path}")
+    st.info(f"File presenti nella cartella: {os.listdir()}")
+else:
+    try:
+        # Carichiamo i dati
+        df = pd.read_excel(file_path)
+        df.columns = df.columns.str.strip() # Pulizia nomi colonne
         
-        if not resultado.empty:
-            st.success(f"Trovati {len(risultato)} articoli")
-            
-            # Mostriamo la tabella dei risultati (senza colonna A)
-            colonne_da_mostrare = ['ARTICOLO', 'RANGE TAGLIE', 'LISTINO', 'IMMAGINE']
-            st.dataframe(risultato[colonne_da_mostrare])
-            
-            # 3. Selezione e Dettaglio
-            scelta = st.selectbox("Seleziona l'articolo esatto per il preventivo:", risultato['ARTICOLO'])
-            dettaglio = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
-            
-            st.divider()
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.subheader("Dettagli Offerta")
-                st.write(f"**Modello:** {dettaglio['ARTICOLO']}")
-                st.write(f"**Taglie:** {dettaglio['RANGE TAGLIE']}")
-                st.write(f"**Prezzo di Listino:** {dettaglio['LISTINO']}€")
-            
-            with col2:
-                st.subheader("Immagine")
-                # Qui gestiremo la foto appena mi dici cosa c'è nella colonna
-                st.info(f"Riferimento: {dettaglio['IMMAGINE']}")
-                
-        else:
-            st.warning("Nessun articolo trovato con questo nome.")
-    else:
-        st.info("Inserisci il nome di un articolo nella barra a sinistra per iniziare.")
+        # Barra laterale per la ricerca
+        st.sidebar.header("Ricerca Prodotti")
+        ricerca = st.sidebar.text_input("Inserisci nome ARTICOLO:").upper()
 
-except Exception as e:
-    st.error(f"Errore: Assicurati che il file '{file_path}' sia caricato correttamente su GitHub.")
-    st.info("Se non l'hai fatto, scrivi 'pip install streamlit pandas openpyxl' nel terminale.")
+        if ricerca:
+            # Filtriamo (senza considerare la colonna A)
+            risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
+            
+            if not risultato.empty:
+                # Tabella riassuntiva
+                st.write("### Risultati trovati:")
+                st.dataframe(risultato[['ARTICOLO', 'RANGE TAGLIE', 'LISTINO', 'IMMAGINE']])
+                
+                # Selezione singola
+                scelta = st.selectbox("Scegli l'articolo esatto per il preventivo:", risultato['ARTICOLO'])
+                d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
+                
+                st.divider()
+                
+                # Visualizzazione finale
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    st.subheader(f"Scheda: {d['ARTICOLO']}")
+                    st.write(f"**Range Taglie:** {d['RANGE TAGLIE']}")
+                    st.write(f"**Prezzo Unitario:** {d['LISTINO']} €")
+                
+                with col2:
+                    st.subheader("Immagine Prodotto")
+                    # Se nella colonna c'è un link o un nome file, lo scriviamo
+                    st.code(d['IMMAGINE']) 
+                    
+            else:
+                st.warning("Nessun articolo trovato.")
+        else:
+            st.info("👈 Usa la barra a sinistra per cercare un articolo nel listino.")
+
+    except Exception as e:
+        st.error(f"Errore durante l'apertura dell'Excel: {e}")
