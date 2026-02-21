@@ -48,15 +48,19 @@ else:
                 with col2:
                     st.subheader("Immagine Prodotto")
                     
-                    # Prendiamo il link dalla colonna IMMAGINE
-                    url_immagine = d['IMMAGINE']
+                    # Puliamo il contenuto della cella da eventuali spazi bianchi
+                    url_immagine = str(d['IMMAGINE']).strip()
                     
-                    # Verifichiamo se il link esiste e non è vuoto
-                    if pd.notna(url_immagine) and str(url_immagine).startswith('http'):
-                        st.image(url_immagine, caption=f"Foto {d['ARTICOLO']}", use_container_width=True)
+                    if url_immagine.startswith('http'):
+                        # Proviamo a mostrare l'immagine
+                        try:
+                            st.image(url_immagine, caption=d['ARTICOLO'], use_container_width=True)
+                        except Exception as e:
+                            st.error("Non riesco a caricare il link come immagine.")
+                            st.write(f"Link trovato: {url_immagine}")
                     else:
-                        st.warning("⚠️ Immagine non disponibile o link non valido")
-                        st.write(f"Contenuto cella: {url_immagine}") # Questo ci aiuta a capire cosa c'è scritto 
+                        st.warning("Il contenuto non sembra un link valido.")
+                        st.write(f"Testo nella cella: {url_immagine}") 
                     
             else:
                 st.warning("Nessun articolo trovato.")
