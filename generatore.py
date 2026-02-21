@@ -23,8 +23,10 @@ else:
         ricerca = st.sidebar.text_input("Inserisci nome ARTICOLO:").upper()
 
         if ricerca:
-            # Filtriamo (senza considerare la colonna A)
-            risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
+    risultato = df[df['ARTICOLO'].astype(str).str.contains(ricerca, na=False)]
+    
+    # CONTROLLA QUI SOTTO: deve essere 'risultato', non 'resultado'
+    if not risultato.empty:
             
             if not risultato.empty:
                 # Tabella riassuntiva
