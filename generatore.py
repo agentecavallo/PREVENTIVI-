@@ -47,8 +47,28 @@ else:
                 
                 with col2:
                     st.subheader("Immagine Prodotto")
-                    # Se nella colonna c'è un link o un nome file, lo scriviamo
-                    st.code(d['IMMAGINE']) 
+                    
+                    import requests
+                    from io import BytesIO
+
+                    url_pulito = str(d['IMMAGINE']).strip()
+
+                    try:
+                        # Proviamo a scaricare l'immagine come se fossimo un browser reale
+                        headers = {'User-Agent': 'Mozilla/5.0'}
+                        response = requests.get(url_pulito, headers=headers, timeout=10)
+                        
+                        if response.status_code == 200:
+                            # Se lo scaricamento riesce, mostriamo i dati dell'immagine
+                            immagine_bytes = BytesIO(response.content)
+                            st.image(immagine_bytes, use_container_width=True)
+                        else:
+                            st.error(f"Il sito blocca l'accesso (Errore {response.status_code})")
+                            st.write(f"[Apri immagine nel browser]({url_pulito})")
+                    
+                    except Exception as e:
+                        st.warning("Impossibile caricare l'anteprima automatica.")
+                        st.write(f"🔗 [Clicca qui per vedere la foto]({url_pulito})") 
                     
             else:
                 st.warning("Nessun articolo trovato.")
