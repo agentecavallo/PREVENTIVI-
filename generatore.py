@@ -13,11 +13,11 @@ st.set_page_config(page_title="Generatore Preventivi", layout="wide")
 if 'carrello' not in st.session_state:
     st.session_state['carrello'] = []
 
-# 1. Controllo esistenza file
+# 1. Controllo esistenza file Excel
 file_path = 'Listino_agente.xlsx'
 
 if not os.path.exists(file_path):
-    st.error(f"⚠️ Il file '{file_path}' non esiste nella cartella di sinistra!")
+    st.error(f"⚠️ Il file '{file_path}' non esiste nella cartella!")
     st.stop()
 
 # 2. Caricamento dati
@@ -59,6 +59,7 @@ if ricerca:
             prezzo_listino = float(d['LISTINO'])
             st.markdown(f"#### Prezzo di Listino: {prezzo_listino:.2f} €")
             
+            # --- SCONTI ---
             st.write("**Applica Sconti (%)**")
             col_sconto1, col_sconto2, col_sconto3 = st.columns(3)
             sc1 = col_sconto1.number_input("Sconto 1 (%)", min_value=0.0, max_value=100.0, step=1.0, value=40.0)
@@ -70,10 +71,12 @@ if ricerca:
             
             st.divider()
             
+            # --- AZZERA QUANTITÀ ---
             if st.button("🔄 Azzera Quantità"):
                 for taglia in range(35, 51):
                     st.session_state[f"qta_{taglia}"] = 0
             
+            # --- GRIGLIA TAGLIE ---
             st.write("**Sviluppo Taglie (Inserisci le quantità):**")
             taglie_disponibili = list(range(35, 51))
             
@@ -91,6 +94,7 @@ if ricerca:
             
             st.write("")
             
+            # --- AGGIUNGI AL CARRELLO ---
             if st.button("🛒 Aggiungi al Preventivo"):
                 aggiunti = 0
                 for taglia, qta in quantita_taglie.items():
@@ -103,7 +107,7 @@ if ricerca:
                             "Sconti Applicati": f"{sc1}% + {sc2}% + {sc3}%",
                             "Netto U.": f"{prezzo_netto:.2f} €",
                             "Totale Riga": prezzo_netto * qta,
-                            "Immagine": str(d['IMMAGINE']).strip() # Salviamo anche l'immagine per il PDF
+                            "Immagine": str(d['IMMAGINE']).strip()
                         }
                         st.session_state['carrello'].append(articolo_da_aggiungere)
                         aggiunti += 1
@@ -139,7 +143,7 @@ if len(st.session_state['carrello']) > 0:
     
     df_carrello = pd.DataFrame(st.session_state['carrello'])
     
-    # Mostriamo a schermo una tabella semplificata (senza l'URL dell'immagine)
+    # Mostriamo a schermo la tabella senza la colonna del link immagine
     st.dataframe(df_carrello.drop(columns=["Immagine"]), use_container_width=True)
     
     totale_pezzi = df_carrello["Quantità"].sum()
@@ -165,84 +169,83 @@ if len(st.session_state['carrello']) > 0:
                     raggruppamento[art] = {
                         "Taglie": [],
                         "Totale_Modello": 0,
-                        "Immagine": riga.get("Immagine", "")
+                        "Immagine": riga.get("Immagine", ""),
+                        "Prezzo_Netto": riga["Netto U."]
                     }
-                raggruppamento[art]["Taglie"].append(f"Tg {riga['Taglia']}: {riga['Quantità']}pz")
+                raggruppamento[art]["Taglie"].append(f"Tg {riga['Taglia']}: {riga['Quantità']} pz")
                 raggruppamento[art]["Totale_Modello"] += riga["Totale Riga"]
 
             # --- CREAZIONE DEL PDF ---
             class PDF(FPDF):
                 def header(self):
-                    # --- AGGIUNTA LOGO ---
-                    # Opzione A: Se il file si chiama 'logo.png' ed è nella stessa cartella su GitHub
-                    logo_path = "logo.png" 
-                    if os.path.exists(logo_path):
-                        # image(percorso, x, y, larghezza)
-                        self.image(logo_path, 10, 8, 33) 
+                    # Controlla se esiste un logo PNG o JPG
+                    if os.path.exists("logo.png"):
+                        self.image("logo.png", 10, 8, 33)
+                    elif os.path.exists("logo.jpg"):
+                        self.image("logo.jpg", 10, 8, 33)
                     
-                    # Se vuoi usare un link internet per il logo, usa questo blocco invece di quello sopra:
-                    # url_logo = "https://tuosito.com/logo.png"
-                    # self.image(url_logo, 10, 8, 33)
-
-                    self.set_font("helvetica", "B", 16)
-                    # Spostiamo il titolo a destra per non sovrapporlo al logo (w=80 è la distanza)
-                    self.cell(80) 
+                    self.set_font("helvetica", "B", 18)
+                    # Spostiamo il testo a destra per non coprire il logo
+                    self.cell(40) 
                     self.cell(0, 10, "PREVENTIVO ORDINE", align="L", new_x="LMARGIN", new_y="NEXT")
-                    self.ln(15) # Aumentiamo lo spazio dopo l'intestazione
+                    self.ln(15) # Spazio sotto l'intestazione
 
             pdf = PDF()
             pdf.add_page()
             
             for art, dati in raggruppamento.items():
-                y_start = pdf.get_y() # Salviamo la posizione verticale per affiancare l'immagine
+                y_start = pdf.get_y()
                 
-                # Testi
+                # Testi del modello
                 pdf.set_font("helvetica", "B", 12)
-                pdf.cell(130, 8, f"Modello: {art}", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(130, 8, f"Modello: {art}  -  Prezzo Cad.: {dati['Prezzo_Netto']}", new_x="LMARGIN", new_y="NEXT")
                 
+                # Lista taglie
                 pdf.set_font("helvetica", "", 10)
                 taglie_str = " | ".join(dati["Taglie"])
                 pdf.multi_cell(130, 6, f"Sviluppo Taglie:\n{taglie_str}")
                 
+                # Totale di quel modello
                 pdf.set_font("helvetica", "B", 11)
-                pdf.cell(130, 8, f"Totale per questo modello: {dati['Totale_Modello']:.2f} Euro", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(130, 8, f"Totale modello: {dati['Totale_Modello']:.2f} Euro", new_x="LMARGIN", new_y="NEXT")
                 
-                # Gestione Immagine
+                # Gestione Immagine nel PDF
                 if dati["Immagine"].startswith("http"):
                     try:
-                        r = requests.get(dati["Immagine"], headers={'User-Agent': 'Mozilla'}, timeout=2)
+                        r = requests.get(dati["Immagine"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
                         if r.status_code == 200:
-                            # Salviamo l'immagine in un file temporaneo invisibile per farla leggere al PDF
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                                 tmp.write(r.content)
                                 tmp_path = tmp.name
-                            # Incolliamo l'immagine sulla destra (x=140)
-                            pdf.image(tmp_path, x=140, y=y_start, w=40)
-                            os.remove(tmp_path) # Pulizia file temporaneo
+                            # Posiziona l'immagine a destra (x=145)
+                            pdf.image(tmp_path, x=145, y=y_start, w=40)
+                            os.remove(tmp_path)
                     except:
-                        pass # Se l'immagine fallisce, andiamo avanti senza far bloccare l'app
+                        pass
                 
-                # Spazio sotto ogni riga
+                # Andiamo a capo per il prossimo modello, tenendo conto dell'altezza dell'immagine
                 if pdf.get_y() < y_start + 45:
                     pdf.set_y(y_start + 45)
                 
+                # Linea separatrice
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
             
-            # Aggiunta del totale finale in fondo al PDF
+            # Totale Finale in fondo
+            pdf.ln(10)
             pdf.set_font("helvetica", "B", 14)
-            pdf.cell(0, 10, f"TOTALE FINALE PREVENTIVO: {totale_finale:.2f} Euro", align="R", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"TOTALE FINALE: {totale_finale:.2f} Euro", align="R", new_x="LMARGIN", new_y="NEXT")
 
-            # Estraiamo i dati del PDF per mostrarli e scaricarli
+            # Estrazione PDF
             pdf_bytes = bytes(pdf.output())
             
-            # --- MOSTRA IL PDF SUBITO A SCHERMO ---
+            # --- MOSTRA PDF A SCHERMO ---
             st.success("✅ PDF Generato con successo!")
             base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
             pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
             st.markdown(pdf_display, unsafe_allow_html=True)
             
-            # --- PULSANTE PER IL DOWNLOAD VERO E PROPRIO ---
+            # --- PULSANTE DOWNLOAD ---
             st.download_button(
                 label="⬇️ Scarica il PDF sul computer",
                 data=pdf_bytes,
