@@ -193,12 +193,16 @@ if len(st.session_state['carrello']) > 0:
             pdf = PDF()
             pdf.add_page()
             
-            for art, dati in raggruppamento.items():
+           for art, dati in raggruppamento.items():
                 y_start = pdf.get_y()
+                
+                # --- CORREZIONE SIMBOLO EURO ---
+                # Sostituiamo il simbolo '€' con la parola 'Euro' per non far bloccare il PDF
+                prezzo_pulito = str(dati['Prezzo_Netto']).replace('€', 'Euro')
                 
                 # Testi del modello
                 pdf.set_font("helvetica", "B", 12)
-                pdf.cell(130, 8, f"Modello: {art}  -  Prezzo Cad.: {dati['Prezzo_Netto']}", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(130, 8, f"Modello: {art}  -  Prezzo Cad.: {prezzo_pulito}", new_x="LMARGIN", new_y="NEXT")
                 
                 # Lista taglie
                 pdf.set_font("helvetica", "", 10)
