@@ -48,7 +48,7 @@ if ricerca:
         d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
         
         st.divider()
-        c1, c2 = st.columns([2, 1]) # La colonna 1 (dettagli) è più larga della 2 (foto)
+        c1, c2 = st.columns([2, 1])
         
         with c1:
             st.subheader("Dettagli Prodotto")
@@ -70,27 +70,39 @@ if ricerca:
             
             st.divider()
             
-            # --- NUOVO: GRIGLIA SVILUPPO TAGLIE ---
+            # --- NUOVO: PULSANTE PER AZZERARE LE QUANTITÀ ---
+            if st.button("🔄 Azzera Quantità"):
+                # Se cliccato, forziamo tutte le taglie a 0 nella memoria dell'app
+                for taglia in range(35, 51):
+                    st.session_state[f"qta_{taglia}"] = 0
+            
+            # --- GRIGLIA SVILUPPO TAGLIE ---
             st.write("**Sviluppo Taglie (Inserisci le quantità):**")
             taglie_disponibili = list(range(35, 51))
             
-            # Creiamo 4 colonne per una griglia ordinata
             cols_taglie = st.columns(4)
-            quantita_taglie = {} # Qui salveremo la quantità per ogni taglia
+            quantita_taglie = {}
             
-            # Distribuiamo le taglie nelle 4 colonne
             for i, taglia in enumerate(taglie_disponibili):
                 col_idx = i % 4
                 with cols_taglie[col_idx]:
-                    # Usiamo una chiave univoca (key) per ogni casella per evitare errori in Streamlit
-                    quantita_taglie[taglia] = st.number_input(f"Tg {taglia}", min_value=0, step=1, value=0, key=f"qta_{taglia}")
+                    # Se la taglia non è ancora nella memoria, la inizializziamo a 0
+                    if f"qta_{taglia}" not in st.session_state:
+                        st.session_state[f"qta_{taglia}"] = 0
+                        
+                    # La casella prende il valore dalla memoria dell'app tramite la 'key'
+                    quantita_taglie[taglia] = st.number_input(
+                        f"Tg {taglia}", 
+                        min_value=0, 
+                        step=1, 
+                        key=f"qta_{taglia}"
+                    )
             
-            st.write("") # Spazio vuoto
+            st.write("")
             
             # --- PULSANTE AGGIUNGI ---
             if st.button("🛒 Aggiungi al Preventivo"):
                 aggiunti = 0
-                # Controlliamo tutte le taglie e aggiungiamo solo quelle con quantità > 0
                 for taglia, qta in quantita_taglie.items():
                     if qta > 0:
                         articolo_da_aggiungere = {
@@ -139,7 +151,6 @@ if len(st.session_state['carrello']) > 0:
     df_carrello = pd.DataFrame(st.session_state['carrello'])
     st.dataframe(df_carrello, use_container_width=True)
     
-    # Calcolo totali
     totale_pezzi = df_carrello["Quantità"].sum()
     totale_finale = df_carrello["Totale Riga"].sum()
     
