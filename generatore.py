@@ -7,7 +7,6 @@ import os
 st.set_page_config(page_title="Generatore Preventivi", layout="wide")
 
 # --- INIZIALIZZAZIONE DELLA MEMORIA (CARRELLO) ---
-# Se il carrello non esiste ancora nella "memoria" dell'app, lo creiamo vuoto
 if 'carrello' not in st.session_state:
     st.session_state['carrello'] = []
 
@@ -21,7 +20,6 @@ if not os.path.exists(file_path):
 # 2. Caricamento dati con gestione errori
 try:
     df = pd.read_excel(file_path)
-    # Puliamo i nomi delle colonne da spazi invisibili
     df.columns = [str(c).strip().upper() for c in df.columns]
 except Exception as e:
     st.error(f"❌ Errore nel leggere l'Excel: {e}")
@@ -43,61 +41,74 @@ if missing:
 ricerca = st.sidebar.text_input("Cerca ARTICOLO:").upper()
 
 if ricerca:
-    # Filtro: cerchiamo in ARTICOLO
     risultato = df[df['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)]
     
-    # QUI HO CORRETTO L'ERRORE "resultado"
     if not risultato.empty:
         scelta = st.selectbox("Seleziona l'articolo trovato:", risultato['ARTICOLO'].unique())
         d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
         
         st.divider()
-        c1, c2 = st.columns(2)
+        c1, c2 = st.columns([2, 1]) # La colonna 1 (dettagli) è più larga della 2 (foto)
         
         with c1:
             st.subheader("Dettagli Prodotto")
             st.write(f"**Modello:** {d['ARTICOLO']}")
             
-            # Assicuriamoci che il listino sia un numero
             prezzo_listino = float(d['LISTINO'])
             st.markdown(f"#### Prezzo di Listino: {prezzo_listino:.2f} €")
             
-            # --- NUOVO: SELEZIONE TAGLIA ---
-            # Crea un menu a tendina con i numeri da 35 a 50
-            taglie_disponibili = list(range(35, 51))
-            taglia_scelta = st.selectbox("Seleziona la Taglia:", taglie_disponibili)
-            
-            # --- NUOVO: GESTIONE SCONTI (Fino a 3) ---
+            # --- GESTIONE SCONTI ---
             st.write("**Applica Sconti (%)**")
             col_sconto1, col_sconto2, col_sconto3 = st.columns(3)
-            # Caselle numeriche per gli sconti. Di base partono da 0.0
-            sc1 = col_sconto1.number_input("Sconto 1 (%)", min_value=0.0, max_value=100.0, step=1.0, value=0.0)
+            # Sconto 1 ha value=40.0 come default
+            sc1 = col_sconto1.number_input("Sconto 1 (%)", min_value=0.0, max_value=100.0, step=1.0, value=40.0)
             sc2 = col_sconto2.number_input("Sconto 2 (%)", min_value=0.0, max_value=100.0, step=1.0, value=0.0)
             sc3 = col_sconto3.number_input("Sconto 3 (%)", min_value=0.0, max_value=100.0, step=1.0, value=0.0)
             
-            # Calcolo del prezzo netto (Sconto a cascata)
             prezzo_netto = prezzo_listino * (1 - sc1/100) * (1 - sc2/100) * (1 - sc3/100)
-            
             st.markdown(f"### Prezzo Netto: {prezzo_netto:.2f} €")
             
-            # Quantità
-            quantita = st.number_input("Quantità", min_value=1, step=1, value=1)
+            st.divider()
             
-            # --- NUOVO: PULSANTE AGGIUNGI AL CARRELLO ---
+            # --- NUOVO: GRIGLIA SVILUPPO TAGLIE ---
+            st.write("**Sviluppo Taglie (Inserisci le quantità):**")
+            taglie_disponibili = list(range(35, 51))
+            
+            # Creiamo 4 colonne per una griglia ordinata
+            cols_taglie = st.columns(4)
+            quantita_taglie = {} # Qui salveremo la quantità per ogni taglia
+            
+            # Distribuiamo le taglie nelle 4 colonne
+            for i, taglia in enumerate(taglie_disponibili):
+                col_idx = i % 4
+                with cols_taglie[col_idx]:
+                    # Usiamo una chiave univoca (key) per ogni casella per evitare errori in Streamlit
+                    quantita_taglie[taglia] = st.number_input(f"Tg {taglia}", min_value=0, step=1, value=0, key=f"qta_{taglia}")
+            
+            st.write("") # Spazio vuoto
+            
+            # --- PULSANTE AGGIUNGI ---
             if st.button("🛒 Aggiungi al Preventivo"):
-                # Creiamo una "riga" con i dati che ci interessano
-                articolo_da_aggiungere = {
-                    "Articolo": d['ARTICOLO'],
-                    "Taglia": taglia_scelta,
-                    "Quantità": quantita,
-                    "Listino U.": f"{prezzo_listino:.2f} €",
-                    "Sconti Applicati": f"{sc1}% + {sc2}% + {sc3}%",
-                    "Netto U.": f"{prezzo_netto:.2f} €",
-                    "Totale Riga": prezzo_netto * quantita # Lo teniamo come numero per sommarlo dopo
-                }
-                # Lo salviamo nella memoria dell'app
-                st.session_state['carrello'].append(articolo_da_aggiungere)
-                st.success(f"Aggiunto: {d['ARTICOLO']} (Tg {taglia_scelta}) al preventivo!")
+                aggiunti = 0
+                # Controlliamo tutte le taglie e aggiungiamo solo quelle con quantità > 0
+                for taglia, qta in quantita_taglie.items():
+                    if qta > 0:
+                        articolo_da_aggiungere = {
+                            "Articolo": d['ARTICOLO'],
+                            "Taglia": taglia,
+                            "Quantità": qta,
+                            "Listino U.": f"{prezzo_listino:.2f} €",
+                            "Sconti Applicati": f"{sc1}% + {sc2}% + {sc3}%",
+                            "Netto U.": f"{prezzo_netto:.2f} €",
+                            "Totale Riga": prezzo_netto * qta
+                        }
+                        st.session_state['carrello'].append(articolo_da_aggiungere)
+                        aggiunti += 1
+                
+                if aggiunti > 0:
+                    st.success(f"✅ Aggiunte correttamente {aggiunti} righe di {d['ARTICOLO']} al preventivo!")
+                else:
+                    st.warning("⚠️ Non hai inserito nessuna quantità! Metti un numero maggiore di zero in almeno una taglia.")
                 
         with c2:
             st.subheader("Foto")
@@ -121,22 +132,20 @@ else:
 # --- SEZIONE CARRELLO / PREVENTIVO (VISIBILE IN FONDO) ---
 # =========================================================
 
-# Se c'è almeno un elemento nel carrello, mostriamo questa sezione
 if len(st.session_state['carrello']) > 0:
     st.divider()
     st.header("🛒 Riepilogo Preventivo")
     
-    # Trasformiamo la lista in una tabella per farla vedere bene
     df_carrello = pd.DataFrame(st.session_state['carrello'])
-    
-    # Mostriamo la tabella a schermo
     st.dataframe(df_carrello, use_container_width=True)
     
-    # Calcoliamo il totale finale sommando tutte le righe
+    # Calcolo totali
+    totale_pezzi = df_carrello["Quantità"].sum()
     totale_finale = df_carrello["Totale Riga"].sum()
-    st.markdown(f"## Totale Finale Preventivo: {totale_finale:.2f} €")
     
-    # Tasto per cancellare tutto e ricominciare
+    st.markdown(f"**Totale Pezzi:** {totale_pezzi}")
+    st.markdown(f"## Totale Finale: {totale_finale:.2f} €")
+    
     if st.button("🗑️ Svuota Preventivo"):
         st.session_state['carrello'] = []
-        st.rerun() # Ricarica l'app per azzerare lo schermo
+        st.rerun()
