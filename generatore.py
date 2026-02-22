@@ -30,16 +30,12 @@ except Exception as e:
 
 st.title("📄 Realizzatore di Offerte")
 
-# 3. Verifica colonne presenti
-colonne_necessarie = ['ARTICOLO', 'LISTINO', 'IMMAGINE']
-colonne_presenti = df.columns.tolist()
+# --- NUOVO CAMPO: NOME CLIENTE ---
+st.sidebar.header("Dati Documento")
+nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Inserisci nome azienda o persona")
 
-missing = [c for c in colonne_necessarie if c not in colonne_presenti]
-if missing:
-    st.warning(f"Attenzione! Nel tuo Excel mancano queste colonne: {missing}")
-    st.stop()
-
-# 4. Interfaccia di ricerca
+# 3. Interfaccia di ricerca
+st.sidebar.divider()
 ricerca = st.sidebar.text_input("Cerca ARTICOLO:").upper()
 
 if ricerca:
@@ -59,7 +55,6 @@ if ricerca:
             prezzo_listino = float(d['LISTINO'])
             st.markdown(f"#### Prezzo di Listino: {prezzo_listino:.2f} €")
             
-            # --- SCONTI ---
             st.write("**Applica Sconti (%)**")
             col_sconto1, col_sconto2, col_sconto3 = st.columns(3)
             sc1 = col_sconto1.number_input("Sconto 1 (%)", min_value=0.0, max_value=100.0, step=1.0, value=40.0)
@@ -71,12 +66,10 @@ if ricerca:
             
             st.divider()
             
-            # --- AZZERA QUANTITÀ ---
             if st.button("🔄 Azzera Quantità"):
                 for taglia in range(35, 51):
                     st.session_state[f"qta_{taglia}"] = 0
             
-            # --- GRIGLIA TAGLIE ---
             st.write("**Sviluppo Taglie (Inserisci le quantità):**")
             taglie_disponibili = list(range(35, 51))
             
@@ -92,9 +85,6 @@ if ricerca:
                         f"Tg {taglia}", min_value=0, step=1, key=f"qta_{taglia}"
                     )
             
-            st.write("")
-            
-            # --- AGGIUNGI AL CARRELLO ---
             if st.button("🛒 Aggiungi al Preventivo"):
                 aggiunti = 0
                 for taglia, qta in quantita_taglie.items():
@@ -113,9 +103,9 @@ if ricerca:
                         aggiunti += 1
                 
                 if aggiunti > 0:
-                    st.success(f"✅ Aggiunte correttamente {aggiunti} righe di {d['ARTICOLO']} al preventivo!")
+                    st.success(f"✅ Aggiunto {d['ARTICOLO']} al preventivo!")
                 else:
-                    st.warning("⚠️ Non hai inserito nessuna quantità!")
+                    st.warning("⚠️ Inserisci almeno una quantità!")
                 
         with c2:
             st.subheader("Foto")
@@ -129,9 +119,6 @@ if ricerca:
                     st.write("Immagine non caricabile.")
     else:
         st.warning("Nessun articolo trovato.")
-else:
-    st.info("Inserisci il nome di un articolo a sinistra per iniziare.")
-
 
 # =========================================================
 # --- SEZIONE CARRELLO E GENERAZIONE PDF ---
@@ -142,78 +129,64 @@ if len(st.session_state['carrello']) > 0:
     st.header("🛒 Riepilogo Preventivo")
     
     df_carrello = pd.DataFrame(st.session_state['carrello'])
-    
-    # Mostriamo a schermo la tabella senza la colonna del link immagine
     st.dataframe(df_carrello.drop(columns=["Immagine"]), use_container_width=True)
     
-    totale_pezzi = df_carrello["Quantità"].sum()
     totale_finale = df_carrello["Totale Riga"].sum()
-    
-    st.markdown(f"**Totale Pezzi:** {totale_pezzi}")
     st.markdown(f"## Totale Finale: {totale_finale:.2f} €")
     
-    c_btn1, c_btn2, c_btn3 = st.columns(3)
+    c_btn1, c_btn2 = st.columns(2)
     
     with c_btn1:
-        if st.button("🗑️ Svuota Preventivo"):
+        if st.button("🗑️ Svuota Tutto"):
             st.session_state['carrello'] = []
             st.rerun()
             
     with c_btn2:
         if st.button("📄 Genera e Apri PDF"):
-            # Raggruppiamo il carrello per Articolo per fare una riga per modello
             raggruppamento = {}
             for riga in st.session_state['carrello']:
                 art = riga["Articolo"]
                 if art not in raggruppamento:
                     raggruppamento[art] = {
-                        "Taglie": [],
-                        "Totale_Modello": 0,
+                        "Taglie": [], "Totale_Modello": 0,
                         "Immagine": riga.get("Immagine", ""),
                         "Prezzo_Netto": riga["Netto U."]
                     }
-                raggruppamento[art]["Taglie"].append(f"Tg {riga['Taglia']}: {riga['Quantità']} pz")
+                raggruppamento[art]["Taglie"].append(f"Tg {riga['Taglia']}: {riga['Quantità']}pz")
                 raggruppamento[art]["Totale_Modello"] += riga["Totale Riga"]
 
-            # --- CREAZIONE DEL PDF ---
             class PDF(FPDF):
                 def header(self):
-                    # Controlla se esiste un logo PNG o JPG
-                    if os.path.exists("logo.png"):
-                        self.image("logo.png", 10, 8, 33)
-                    elif os.path.exists("logo.jpg"):
-                        self.image("logo.jpg", 10, 8, 33)
+                    # Logo a sinistra
+                    for nome_f in ["logo.png", "logo.jpg", "logo.jpeg"]:
+                        if os.path.exists(nome_f):
+                            self.image(nome_f, 10, 8, 33)
+                            break
                     
-                    self.set_font("helvetica", "B", 18)
-                    # Spostiamo il testo a destra per non coprire il logo
-                    self.cell(40) 
-                    self.cell(0, 10, "PREVENTIVO ORDINE", align="L", new_x="LMARGIN", new_y="NEXT")
-                    self.ln(15) # Spazio sotto l'intestazione
+                    # Nome cliente in alto a destra
+                    self.set_font("helvetica", "B", 12)
+                    self.set_xy(110, 15)
+                    testo_cliente = f"Spett.le {nome_cliente}" if nome_cliente else "Spett.le Cliente"
+                    self.cell(90, 10, testo_cliente, align="R", ln=True)
+                    self.ln(20)
 
             pdf = PDF()
             pdf.add_page()
             
             for art, dati in raggruppamento.items():
                 y_start = pdf.get_y()
+                prezzo_pulito = str(dati['Prezzo_Netto']).replace('€', 'Euro')
                 
-                # --- CORREZIONE SIMBOLO EURO ---
-                # Eliminiamo il simbolo € prima di scriverlo nel PDF per evitare errori
-                prezzo_netto_pulito = str(dati['Prezzo_Netto']).replace('€', 'Euro')
-                
-                # Testi del modello
                 pdf.set_font("helvetica", "B", 12)
-                pdf.cell(130, 8, f"Modello: {art}  -  Prezzo Cad.: {prezzo_netto_pulito}", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(130, 8, f"Modello: {art} - Prezzo: {prezzo_pulito}", ln=True)
                 
-                # Lista taglie
                 pdf.set_font("helvetica", "", 10)
                 taglie_str = " | ".join(dati["Taglie"])
                 pdf.multi_cell(130, 6, f"Sviluppo Taglie:\n{taglie_str}")
                 
-                # Totale di quel modello
                 pdf.set_font("helvetica", "B", 11)
-                pdf.cell(130, 8, f"Totale modello: {dati['Totale_Modello']:.2f} Euro", new_x="LMARGIN", new_y="NEXT")
+                pdf.cell(130, 8, f"Totale modello: {dati['Totale_Modello']:.2f} Euro", ln=True)
                 
-                # Gestione Immagine nel PDF
                 if dati["Immagine"].startswith("http"):
                     try:
                         r = requests.get(dati["Immagine"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
@@ -221,38 +194,20 @@ if len(st.session_state['carrello']) > 0:
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                                 tmp.write(r.content)
                                 tmp_path = tmp.name
-                            # Posiziona l'immagine a destra (x=145)
                             pdf.image(tmp_path, x=145, y=y_start, w=40)
                             os.remove(tmp_path)
-                    except:
-                        pass
+                    except: pass
                 
-                # Andiamo a capo per il prossimo modello, tenendo conto dell'altezza dell'immagine
-                if pdf.get_y() < y_start + 45:
-                    pdf.set_y(y_start + 45)
-                
-                # Linea separatrice
+                if pdf.get_y() < y_start + 45: pdf.set_y(y_start + 45)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
             
-            # Totale Finale in fondo
             pdf.ln(10)
             pdf.set_font("helvetica", "B", 14)
-            pdf.cell(0, 10, f"TOTALE FINALE: {totale_finale:.2f} Euro", align="R", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(0, 10, f"TOTALE GENERALE: {totale_finale:.2f} Euro", align="R", ln=True)
 
-            # Estrazione PDF
             pdf_bytes = bytes(pdf.output())
-            
-            # --- MOSTRA PDF A SCHERMO ---
-            st.success("✅ PDF Generato con successo!")
             base64_pdf = base64.b64encode(pdf_bytes).decode('utf-8')
             pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
             st.markdown(pdf_display, unsafe_allow_html=True)
-            
-            # --- PULSANTE DOWNLOAD ---
-            st.download_button(
-                label="⬇️ Scarica il PDF sul computer",
-                data=pdf_bytes,
-                file_name="Preventivo.pdf",
-                mime="application/pdf"
-            )
+            st.download_button(label="⬇️ Scarica PDF", data=pdf_bytes, file_name=f"Preventivo_{nome_cliente}.pdf", mime="application/pdf")
