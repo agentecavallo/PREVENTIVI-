@@ -173,9 +173,22 @@ if len(st.session_state['carrello']) > 0:
             # --- CREAZIONE DEL PDF ---
             class PDF(FPDF):
                 def header(self):
+                    # --- AGGIUNTA LOGO ---
+                    # Opzione A: Se il file si chiama 'logo.png' ed è nella stessa cartella su GitHub
+                    logo_path = "logo.png" 
+                    if os.path.exists(logo_path):
+                        # image(percorso, x, y, larghezza)
+                        self.image(logo_path, 10, 8, 33) 
+                    
+                    # Se vuoi usare un link internet per il logo, usa questo blocco invece di quello sopra:
+                    # url_logo = "https://tuosito.com/logo.png"
+                    # self.image(url_logo, 10, 8, 33)
+
                     self.set_font("helvetica", "B", 16)
-                    self.cell(0, 10, "Preventivo Ordine", align="C", new_x="LMARGIN", new_y="NEXT")
-                    self.ln(5)
+                    # Spostiamo il titolo a destra per non sovrapporlo al logo (w=80 è la distanza)
+                    self.cell(80) 
+                    self.cell(0, 10, "PREVENTIVO ORDINE", align="L", new_x="LMARGIN", new_y="NEXT")
+                    self.ln(15) # Aumentiamo lo spazio dopo l'intestazione
 
             pdf = PDF()
             pdf.add_page()
