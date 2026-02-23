@@ -31,7 +31,7 @@ def carica_dati(path):
 df = carica_dati(file_path)
 
 if df is None:
-    st.error(f"⚠️ Errore: Il file '{file_path}' non è stato trovato.")
+    st.error(f"⚠️ Errore: Il file '{file_path}' non è stato trovato o è illeggibile.")
     st.stop()
 
 st.title("📄 Realizzatore di Offerte Professionali")
@@ -204,19 +204,27 @@ if st.session_state['carrello']:
             pdf.set_font("helvetica", "B", 14)
             pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
             
-            # --- GENERAZIONE OUTPUT SICURA ---
-            # Questo metodo restituisce direttamente i bytes necessari
-            pdf_bytes = pdf.output()
+            # ==========================================
+            # FIX DEFINITIVO PER FPDF E STREAMLIT
+            # ==========================================
+            pdf_out = pdf.output()
             
-            # Se la libreria restituisce una stringa (vecchie versioni), la convertiamo
-            if isinstance(pdf_bytes, str):
-                pdf_bytes = pdf_bytes.encode('latin-1')
+            # Forziamo la conversione in puro formato 'bytes'
+            # Questo previene la StreamlitAPIException "unsupported_error"
+            if isinstance(pdf_out, str):
+                pdf_bytes = pdf_out.encode('latin-1')
+            elif isinstance(pdf_out, bytearray):
+                pdf_bytes = bytes(pdf_out)
+            else:
+                pdf_bytes = bytes(pdf_out)
 
-            # Anteprima
+            # Anteprima in Base64
             b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            
             st.divider()
-            st.info("💡 Se non visualizzi l'anteprima, scarica il file con il tasto sotto.")
-            pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600"></iframe>'
+            st.info("💡 Se non visualizzi l'anteprima qui sotto, clicca sul tasto 'Scarica PDF'.")
+            
+            pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
             st.markdown(pdf_display, unsafe_allow_html=True)
             
             # Pulsante Download
