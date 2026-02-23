@@ -60,32 +60,30 @@ if ricerca:
             
             st.divider()
             
-            # --- TASTO AZZERA E GRIGLIA TAGLIE OTTIMIZZATA ---
+            # --- TASTO AZZERA ---
             if st.button("🔄 Azzera Quantità"):
                 for t in range(35, 51):
                     st.session_state[f"qta_{t}"] = 0
             
             st.write("**Inserisci Quantità:**")
             
-            # Creiamo due righe di 8 taglie ciascuna per farle stare meglio su mobile
             taglie = list(range(35, 51))
             quantita_taglie = {}
             
-            # Prima fila (35-42)
+            # Griglia taglie
             cols1 = st.columns(8)
             for i in range(8):
                 t = taglie[i]
                 with cols1[i]:
                     if f"qta_{t}" not in st.session_state: st.session_state[f"qta_{t}"] = 0
-                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=f"qta_{t}", label_visibility="visible")
+                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=f"qta_{t}")
             
-            # Seconda fila (43-50)
             cols2 = st.columns(8)
             for i in range(8, 16):
                 t = taglie[i]
                 with cols2[i-8]:
                     if f"qta_{t}" not in st.session_state: st.session_state[f"qta_{t}"] = 0
-                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=f"qta_{t}", label_visibility="visible")
+                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=f"qta_{t}")
 
             st.write("")
             if st.button("🛒 Aggiungi al Preventivo", use_container_width=True):
@@ -95,7 +93,8 @@ if ricerca:
                         st.session_state['carrello'].append({
                             "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
                             "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
-                            "Immagine": str(d['IMMAGINE']).strip()
+                            "Immagine": str(d['IMMAGINE']).strip(),
+                            "Prezzo_Val": prezzo_netto
                         })
                         aggiunti += 1
                 if aggiunti > 0: st.success("Aggiunto!")
@@ -114,20 +113,22 @@ if ricerca:
 # =========================================================
 if st.session_state['carrello']:
     st.divider()
-    st.header("🛒 Riepilogo")
+    st.header("🛒 Riepilogo Preventivo")
     df_c = pd.DataFrame(st.session_state['carrello'])
-    st.dataframe(df_c.drop(columns=["Immagine"]), use_container_width=True)
+    st.dataframe(df_c[["Articolo", "Taglia", "Quantità", "Netto U.", "Totale Riga"]], use_container_width=True)
     
     totale_generale = df_c["Totale Riga"].sum()
-    st.markdown(f"### Totale: {totale_generale:.2f} €")
+    st.markdown(f"### Totale Complessivo: **{totale_generale:.2f} €**")
     
     c_p1, c_p2 = st.columns(2)
     with c_p1:
         if st.button("🗑️ Svuota Tutto"):
             st.session_state['carrello'] = []
             st.rerun()
+            
     with c_p2:
         if st.button("📄 Genera PDF", use_container_width=True):
+            # Raggruppamento per articolo
             raggruppo = {}
             for r in st.session_state['carrello']:
                 art = r["Articolo"]
@@ -150,30 +151,53 @@ if st.session_state['carrello']:
 
             pdf = PDF()
             pdf.add_page()
+            
             for art, dati in raggruppo.items():
-                y_s = pdf.get_y()
-                p_p = str(dati['Netto']).replace('€', 'Euro')
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(130, 7, f"Modello: {art} - Prezzo: {p_p}", ln=True)
-                pdf.set_font("helvetica", "", 10)
-                pdf.multi_cell(130, 5, " | ".join(dati["T"]))
-                pdf.set_font("helvetica", "B", 10)
-                pdf.cell(130, 7, f"Totale: {dati['Tot']:.2f} Euro", ln=True)
+                y_inizio = pdf.get_y()
                 
+                # Controllo fine pagina
+                if y_inizio > 230:
+                    pdf.add_page()
+                    y_inizio = pdf.get_y()
+
+                # --- DISEGNO IMMAGINE (A DESTRA) ---
                 if dati["Img"].startswith("http"):
                     try:
-                        res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=2)
+                        res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
                             tmp.write(res.content)
-                            pdf.image(tmp.name, x=150, y=y_s, w=35)
+                            # Immagine allineata a y_inizio
+                            pdf.image(tmp.name, x=155, y=y_inizio, w=35)
                         os.remove(tmp.name)
-                    except: pass
+                    except:
+                        pass
+
+                # --- TESTO (A SINISTRA) ---
+                p_p = str(dati['Netto']).replace('€', 'Euro')
+                pdf.set_font("helvetica", "B", 12)
+                pdf.cell(135, 7, f"Modello: {art}", ln=True)
+                pdf.set_font("helvetica", "I", 10)
+                pdf.cell(135, 6, f"Prezzo Unitario: {p_p}", ln=True)
                 
-                pdf.set_y(max(pdf.get_y(), y_s + 40))
+                pdf.set_font("helvetica", "", 10)
+                # multi_cell per gestire liste di taglie lunghe
+                pdf.multi_cell(135, 5, " | ".join(dati["T"]))
+                
+                pdf.set_font("helvetica", "B", 10)
+                pdf.cell(135, 7, f"Parziale: {dati['Tot']:.2f} Euro", ln=True)
+                
+                # Calcolo posizione finale per evitare sovrapposizioni
+                y_fine_testo = pdf.get_y()
+                y_fine_immagine = y_inizio + 40
+                y_punto_di_arresto = max(y_fine_testo, y_fine_immagine)
+                
+                pdf.set_y(y_punto_di_arresto)
+                pdf.ln(2)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
 
-            pdf.ln(10)
+            # --- TOTALE FINALE ---
+            pdf.ln(5)
             pdf.set_font("helvetica", "B", 14)
             pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R", ln=True)
             
