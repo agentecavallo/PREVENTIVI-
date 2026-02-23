@@ -35,14 +35,13 @@ if df is None:
     st.stop()
 
 # =========================================================
-# --- SIDEBAR: DATI CLIENTE E SCONTI (Modifica effettuata) ---
+# --- SIDEBAR: DATI CLIENTE E SCONTI ---
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
 
 st.sidebar.divider()
 
-# Abbiamo spostato gli sconti qui nella tendina laterale
 st.sidebar.header("💰 Impostazioni Sconto")
 col_sc1, col_sc2, col_sc3 = st.sidebar.columns(3)
 sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0)
@@ -50,12 +49,11 @@ sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 0.0)
 sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0)
 
 # =========================================================
-# --- PAGINA PRINCIPALE: RICERCA (Modifica effettuata) ---
+# --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
 st.title("📄 Realizzatore di Offerte Professionali")
 
 st.header("🔍 Ricerca Articolo")
-# La ricerca ora è nella pagina principale
 ricerca = st.text_input("Inserisci nome modello:", placeholder="Digita qui il modello...").upper()
 
 if ricerca:
@@ -72,55 +70,80 @@ if ricerca:
             st.subheader(f"Modello: {d['ARTICOLO']}")
             prezzo_listino = float(d['LISTINO'])
             
-            # Il calcolo del prezzo netto usa gli sconti impostati nella sidebar
             prezzo_netto = prezzo_listino * (1 - sc1/100) * (1 - sc2/100) * (1 - sc3/100)
             st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
             
             st.divider()
             
-            # --- GRIGLIA TAGLIE ---
-            st.write("**Quantità per Taglia:**")
+            # --- MODALITÀ DI INSERIMENTO ---
+            modalita = st.radio(
+                "Scegli la modalità di inserimento:", 
+                ["Specifica Taglie", "Solo Modello/Vetrina (Senza taglie)"], 
+                horizontal=True
+            )
             
-            if st.button("🔄 Azzera Campi"):
-                for t in range(35, 51):
-                    st.session_state[f"qta_{t}"] = 0
-                st.rerun()
-
-            taglie = list(range(35, 51))
-            quantita_taglie = {}
+            st.write("") # Spazio vuoto
             
-            cols1 = st.columns(8)
-            for i in range(8):
-                t = taglie[i]
-                with cols1[i]:
-                    key = f"qta_{t}"
-                    if key not in st.session_state: st.session_state[key] = 0
-                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=key)
-            
-            cols2 = st.columns(8)
-            for i in range(8, 16):
-                t = taglie[i]
-                with cols2[i-8]:
-                    key = f"qta_{t}"
-                    if key not in st.session_state: st.session_state[key] = 0
-                    quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=key)
-
-            st.write("")
-            if st.button("🛒 Aggiungi al Preventivo", use_container_width=True, type="primary"):
-                aggiunti = 0
-                for t, q in quantita_taglie.items():
-                    if q > 0:
-                        st.session_state['carrello'].append({
-                            "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
-                            "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
-                            "Immagine": str(d['IMMAGINE']).strip()
-                        })
-                        aggiunti += 1
-                if aggiunti > 0: 
-                    st.success("Aggiunto!")
+            if modalita == "Specifica Taglie":
+                st.write("**Quantità per Taglia:**")
+                
+                if st.button("🔄 Azzera Campi"):
+                    for t in range(35, 51):
+                        st.session_state[f"qta_{t}"] = 0
                     st.rerun()
-                else: 
-                    st.warning("Inserisci una quantità!")
+
+                taglie = list(range(35, 51))
+                quantita_taglie = {}
+                
+                cols1 = st.columns(8)
+                for i in range(8):
+                    t = taglie[i]
+                    with cols1[i]:
+                        key = f"qta_{t}"
+                        if key not in st.session_state: st.session_state[key] = 0
+                        quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=key)
+                
+                cols2 = st.columns(8)
+                for i in range(8, 16):
+                    t = taglie[i]
+                    with cols2[i-8]:
+                        key = f"qta_{t}"
+                        if key not in st.session_state: st.session_state[key] = 0
+                        quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=key)
+
+                st.write("")
+                if st.button("🛒 Aggiungi al Preventivo", use_container_width=True, type="primary"):
+                    aggiunti = 0
+                    for t, q in quantita_taglie.items():
+                        if q > 0:
+                            st.session_state['carrello'].append({
+                                "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
+                                "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
+                                "Immagine": str(d['IMMAGINE']).strip()
+                            })
+                            aggiunti += 1
+                    if aggiunti > 0: 
+                        st.success("Aggiunto con successo!")
+                        st.rerun()
+                    else: 
+                        st.warning("Inserisci almeno una quantità!")
+            
+            else:
+                # MODALITÀ VETRINA (SENZA TAGLIE)
+                st.info("💡 In questa modalità puoi inserire l'articolo senza specificare le taglie. Se lasci '0', l'articolo apparirà nel PDF solo con il prezzo unitario come vetrina.")
+                qta_generica = st.number_input("Quantità generica totale:", min_value=0, step=1, value=0)
+                
+                if st.button("🛒 Aggiungi Modello", use_container_width=True, type="primary"):
+                    st.session_state['carrello'].append({
+                        "Articolo": d['ARTICOLO'], 
+                        "Taglia": "-", # Trattino per indicare l'assenza di taglia
+                        "Quantità": qta_generica,
+                        "Netto U.": f"{prezzo_netto:.2f} €", 
+                        "Totale Riga": prezzo_netto * qta_generica,
+                        "Immagine": str(d['IMMAGINE']).strip()
+                    })
+                    st.success("Modello aggiunto al preventivo!")
+                    st.rerun()
                 
         with c2:
             url = str(d['IMMAGINE']).strip()
@@ -138,6 +161,8 @@ if st.session_state['carrello']:
     st.divider()
     st.header("🛒 Riepilogo")
     df_c = pd.DataFrame(st.session_state['carrello'])
+    
+    # Mostriamo la tabella a video in modo pulito (se taglia è -, la formattiamo)
     st.table(df_c[["Articolo", "Taglia", "Quantità", "Netto U.", "Totale Riga"]])
     
     totale_generale = df_c["Totale Riga"].sum()
@@ -156,7 +181,14 @@ if st.session_state['carrello']:
                 art = r["Articolo"]
                 if art not in raggruppo:
                     raggruppo[art] = {"T": [], "Tot": 0, "Img": r["Immagine"], "Netto": r["Netto U."]}
-                raggruppo[art]["T"].append(f"Tg{r['Taglia']}: {r['Quantità']}pz")
+                
+                # Gestiamo come scrivere le quantità in base alla modalità
+                if r["Quantità"] > 0:
+                    if r["Taglia"] == "-":
+                        raggruppo[art]["T"].append(f"Q.tà: {r['Quantità']}pz")
+                    else:
+                        raggruppo[art]["T"].append(f"Tg{r['Taglia']}: {r['Quantità']}pz")
+                
                 raggruppo[art]["Tot"] += r["Totale Riga"]
 
             class PDF(FPDF):
@@ -195,13 +227,25 @@ if st.session_state['carrello']:
                 pdf.cell(135, 7, f"Modello: {art}")
                 pdf.ln(7)
                 pdf.set_font("helvetica", "", 10)
-                pdf.cell(135, 6, f"Prezzo Unitario: {dati['Netto'].replace('€', 'Euro')}")
+                pdf.cell(135, 6, f"Prezzo Netto: {dati['Netto'].replace('€', 'Euro')}")
                 pdf.ln(6)
-                pdf.set_font("helvetica", "I", 9)
-                pdf.multi_cell(135, 5, " | ".join(dati["T"]))
-                pdf.set_font("helvetica", "B", 10)
-                pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro")
-                pdf.ln(7)
+                
+                # Stampo le quantità/taglie solo se ce ne sono
+                if dati["T"]:
+                    pdf.set_font("helvetica", "I", 9)
+                    pdf.multi_cell(135, 5, " | ".join(dati["T"]))
+                else:
+                    pdf.set_font("helvetica", "I", 9)
+                    pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)")
+                    pdf.ln(5)
+                
+                # Stampo il Subtotale solo se c'è un valore
+                if dati['Tot'] > 0:
+                    pdf.set_font("helvetica", "B", 10)
+                    pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro")
+                    pdf.ln(7)
+                else:
+                    pdf.ln(7) # Lascia un po' di spazio se non c'è il subtotale
                 
                 # Calcolo posizione per evitare sovrapposizioni
                 y_fine = max(pdf.get_y(), y_inizio + 40)
@@ -210,8 +254,11 @@ if st.session_state['carrello']:
                 pdf.ln(5)
 
             pdf.ln(5)
-            pdf.set_font("helvetica", "B", 14)
-            pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
+            
+            # Mostro il totale generale solo se è maggiore di zero
+            if totale_generale > 0:
+                pdf.set_font("helvetica", "B", 14)
+                pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
             
             # ==========================================
             # FIX DEFINITIVO PER FPDF E STREAMLIT
@@ -238,7 +285,7 @@ if st.session_state['carrello']:
             st.download_button(
                 label="⬇️ Scarica PDF",
                 data=pdf_bytes,
-                file_name="Preventivo.pdf",
+                file_name="Preventivo_Vetrina.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
