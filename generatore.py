@@ -34,15 +34,29 @@ if df is None:
     st.error(f"⚠️ Errore: Il file '{file_path}' non è stato trovato o è illeggibile.")
     st.stop()
 
-st.title("📄 Realizzatore di Offerte Professionali")
-
-# --- SIDEBAR: DATI CLIENTE E RICERCA ---
+# =========================================================
+# --- SIDEBAR: DATI CLIENTE E SCONTI (Modifica effettuata) ---
+# =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
 
 st.sidebar.divider()
-st.sidebar.header("🔍 Ricerca Articolo")
-ricerca = st.sidebar.text_input("Inserisci nome modello:").upper()
+
+# Abbiamo spostato gli sconti qui nella tendina laterale
+st.sidebar.header("💰 Impostazioni Sconto")
+col_sc1, col_sc2, col_sc3 = st.sidebar.columns(3)
+sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0)
+sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 0.0)
+sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0)
+
+# =========================================================
+# --- PAGINA PRINCIPALE: RICERCA (Modifica effettuata) ---
+# =========================================================
+st.title("📄 Realizzatore di Offerte Professionali")
+
+st.header("🔍 Ricerca Articolo")
+# La ricerca ora è nella pagina principale
+ricerca = st.text_input("Inserisci nome modello:", placeholder="Digita qui il modello...").upper()
 
 if ricerca:
     risultato = df[df['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)]
@@ -58,12 +72,7 @@ if ricerca:
             st.subheader(f"Modello: {d['ARTICOLO']}")
             prezzo_listino = float(d['LISTINO'])
             
-            # --- SEZIONE SCONTI ---
-            col_sc1, col_sc2, col_sc3 = st.columns(3)
-            sc1 = col_sc1.number_input("Sconto 1 %", 0.0, 100.0, 40.0)
-            sc2 = col_sc2.number_input("Sconto 2 %", 0.0, 100.0, 0.0)
-            sc3 = col_sc3.number_input("Sconto 3 %", 0.0, 100.0, 0.0)
-            
+            # Il calcolo del prezzo netto usa gli sconti impostati nella sidebar
             prezzo_netto = prezzo_listino * (1 - sc1/100) * (1 - sc2/100) * (1 - sc3/100)
             st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
             
@@ -209,8 +218,6 @@ if st.session_state['carrello']:
             # ==========================================
             pdf_out = pdf.output()
             
-            # Forziamo la conversione in puro formato 'bytes'
-            # Questo previene la StreamlitAPIException "unsupported_error"
             if isinstance(pdf_out, str):
                 pdf_bytes = pdf_out.encode('latin-1')
             elif isinstance(pdf_out, bytearray):
