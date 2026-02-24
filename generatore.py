@@ -14,6 +14,11 @@ st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon=
 if 'carrello' not in st.session_state:
     st.session_state['carrello'] = []
 
+# --- NUOVO: MEMORIA PER L'ESPOSITORE SELEZIONATO ---
+# Questo serve a ricordare quale bottone hai cliccato nella sidebar
+if 'espositore_selezionato' not in st.session_state:
+    st.session_state['espositore_selezionato'] = None
+
 # --- CARICAMENTO DATI ---
 @st.cache_data
 def carica_dati(path, tipo="base"):
@@ -35,7 +40,7 @@ df_base = carica_dati('Listino_agente.xlsx', "base")
 df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 
 # =========================================================
-# --- SIDEBAR: DATI CLIENTE, SCONTI E NOTE ---
+# --- SIDEBAR: DATI CLIENTE, SCONTI, NOTE E ESPOSITORI ---
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
@@ -60,7 +65,44 @@ sc_atg3 = col_atg3.number_input("Sc. ATG 3 %", 0.0, 100.0, 0.0, key="sc_atg3")
 
 st.sidebar.divider()
 
-note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note (es. tempi di consegna, validità offerta, ecc.)...")
+# --- NUOVA SEZIONE SIDEBAR: PULSANTI ESPOSITORI ---
+st.sidebar.header("🎁 Espositori Omagio")
+st.sidebar.write("Clicca per selezionare l'espositore da includere nel PDF:")
+
+# Creiamo due righe con due colonne ciascuna per i 4 pulsanti
+col_esp1, col_esp2 = st.sidebar.columns(2)
+col_esp3, col_esp4 = st.sidebar.columns(2)
+
+# Funzione di aiuto per gestire il click (imposta la memoria e mostra una notifica)
+def seleziona_espositore(nome_file_img):
+    st.session_state['espositore_selezionato'] = nome_file_img
+    # Mostra un piccolo messaggio pop-up di conferma
+    st.toast(f"Selezionato: {nome_file_img.replace('.jpg','')}", icon="✅")
+
+with col_esp1:
+    # Il testo del bottone è solo testo, come richiesto
+    if st.button("ATG Banco", use_container_width=True):
+        seleziona_espositore("ATG banco.jpg")
+with col_esp2:
+    if st.button("ATG Terra", use_container_width=True):
+        seleziona_espositore("ATG terra.jpg")
+with col_esp3:
+    if st.button("Base Banco", use_container_width=True):
+        seleziona_espositore("Base banco.jpg")
+with col_esp4:
+    if st.button("Base Terra", use_container_width=True):
+        seleziona_espositore("BASE terra.jpg")
+
+# Mostra cosa è stato selezionato e dai la possibilità di rimuoverlo
+if st.session_state['espositore_selezionato']:
+    st.sidebar.success(f"✅ Incluso nel PDF: **{st.session_state['espositore_selezionato'].replace('.jpg','')}**")
+    if st.sidebar.button("❌ Rimuovi Espositore"):
+        st.session_state['espositore_selezionato'] = None
+        st.rerun()
+
+st.sidebar.divider()
+
+note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=200, placeholder="Scrivi qui le tue note...")
 
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
@@ -229,22 +271,23 @@ if st.session_state['carrello']:
                     
                     # Nome Cliente a capo
                     self.cell(100, 8, "Spett.le", align="R", ln=1)
-                    self.set_x(100) # Riporta il cursore sulla stessa colonna immaginaria
+                    self.set_x(100) 
                     testo_nome = nome_cliente if nome_cliente else "Cliente"
                     self.cell(100, 8, testo_nome, align="R", ln=1)
                     
-                    self.ln(20) # Spazio prima di iniziare gli articoli
+                    self.ln(20) 
 
             pdf = PDF()
             pdf.add_page()
             
+            # --- CICLO PRODOTTI ---
             for art, dati in raggruppo.items():
                 y_inizio = pdf.get_y()
                 if y_inizio > 230:
                     pdf.add_page()
                     y_inizio = pdf.get_y()
 
-                # --- 1. STAMPA DEI TESTI (SEMPRE E SOLO A SINISTRA) ---
+                # 1. STAMPA TESTI PRODOTTO
                 pdf.set_xy(10, y_inizio)
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(135, 7, f"Modello: {art}", ln=1)
@@ -259,20 +302,18 @@ if st.session_state['carrello']:
                     pdf.set_font("helvetica", "I", 9)
                     pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)", ln=1)
                 
-                pdf.ln(2) # Piccolo spazio
+                pdf.ln(2) 
                 
-                # Subtotale forzato esplicitamente a coordinata X = 10 (sinistra)
                 if dati['Tot'] > 0:
                     pdf.set_x(10) 
                     pdf.set_font("helvetica", "B", 10)
                     pdf.cell(135, 6, f"Subtotale: {dati['Tot']:.2f} Euro", ln=1)
                 
-                # Salviamo dove è arrivato il testo
                 y_fine_testo = pdf.get_y()
 
-                # --- 2. GESTIONE IMMAGINE (SEMPRE E SOLO A DESTRA) ---
+                # 2. GESTIONE IMMAGINE PRODOTTO
                 foto_inserita = False
-                y_fine_immagine = y_inizio + 10 # Valore minimo di default
+                y_fine_immagine = y_inizio + 10 
                 
                 if dati["Img"].startswith("http"):
                     try:
@@ -283,7 +324,6 @@ if st.session_state['carrello']:
                                 pdf.image(tmp.name, x=155, y=y_inizio, w=35)
                             os.remove(tmp.name)
                             foto_inserita = True
-                            # Stimiamo un'altezza media dell'immagine di 30/35 pixel
                             y_fine_immagine = y_inizio + 35 
                     except: 
                         pass
@@ -296,22 +336,61 @@ if st.session_state['carrello']:
                     pdf.set_text_color(0, 0, 0)
                     y_fine_immagine = y_inizio + 20
                 
-                # --- 3. LINEA DI SEPARAZIONE INTELLIGENTE ---
-                # Prende il punto più basso tra i testi a sinistra e la foto a destra
+                # 3. LINEA DI SEPARAZIONE
                 y_fine_blocco = max(y_fine_testo, y_fine_immagine)
-                
                 pdf.set_y(y_fine_blocco + 5)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
 
+            # --- TOTALE GENERALE ---
             pdf.ln(5)
-            
             if totale_generale > 0:
                 pdf.set_font("helvetica", "B", 14)
                 pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
                 pdf.ln(15)
 
-            # Note
+            # =========================================================
+            # --- NUOVA SEZIONE: INSERIMENTO ESPOSITORE NEL PDF ---
+            # =========================================================
+            # Recuperiamo dalla memoria quale espositore è stato scelto
+            espositore_img_file = st.session_state.get('espositore_selezionato')
+
+            # Se un espositore è stato scelto (non è None)
+            if espositore_img_file:
+                # Controlliamo se c'è abbastanza spazio nella pagina, altrimenti ne aggiungiamo una
+                if pdf.get_y() > 180: 
+                    pdf.add_page()
+                
+                pdf.ln(10) # Un po' di spazio prima dell'espositore
+                current_y_esp = pdf.get_y() # Salviamo la posizione verticale attuale
+
+                # 1. Inseriamo l'immagine a sinistra (x=10)
+                # Controlliamo se il file esiste davvero per evitare errori
+                if os.path.exists(espositore_img_file):
+                    # Inserisce l'immagine con larghezza 50mm
+                    pdf.image(espositore_img_file, x=10, y=current_y_esp, w=50)
+                else:
+                    # Se manca il file, scriviamo un avviso nel PDF
+                    pdf.set_xy(10, current_y_esp)
+                    pdf.set_font("helvetica", "I", 10)
+                    pdf.set_text_color(200,0,0)
+                    pdf.cell(50, 10, f"File '{espositore_img_file}' non trovato.", ln=1)
+                    pdf.set_text_color(0,0,0)
+
+                # 2. Inseriamo il testo a destra dell'immagine (x=65)
+                pdf.set_xy(65, current_y_esp + 15) # Posizioniamo il testo un po' più in basso rispetto all'inizio dell'immagine
+                pdf.set_font("helvetica", "B", 16)
+                # Usiamo un colore verde scuro per evidenziare che è gratuito
+                pdf.set_text_color(0, 100, 0) 
+                pdf.multi_cell(0, 8, "Espositore in OMAGGIO\ncon questo ordine!")
+                pdf.set_text_color(0, 0, 0) # Reimpostiamo il colore nero
+
+                # Spostiamo il cursore sotto l'immagine dell'espositore per le note successive
+                # (Immagine alta circa 50mm + 10mm di margine)
+                pdf.set_y(current_y_esp + 60) 
+            # =========================================================
+
+            # --- NOTE ---
             if note_preventivo.strip():
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(0, 8, "Note:")
@@ -321,7 +400,7 @@ if st.session_state['carrello']:
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
             
-            # --- SEZIONE FIRMA MICHELE CAVALLO MODIFICATA ---
+            # --- FIRMA ---
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
             pdf.cell(0, 6, "Michele Cavallo", align="R", ln=1)
