@@ -132,11 +132,11 @@ if st.session_state['espositori_selezionati']:
 
 st.sidebar.divider()
 
-# --- CAMPI: CONDIZIONI COMMERCIALI ---
+# --- CAMPI: CONDIZIONI COMMERCIALI CON VALORI DI DEFAULT ---
 st.sidebar.header("⚖️ Condizioni Commerciali")
-campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg...")
-campo_trasporto = st.sidebar.text_input("Trasporto:", placeholder="es. Porto Franco...")
-campo_validita = st.sidebar.text_input("Validità Offerta:", placeholder="es. 30 giorni...")
+campo_pagamento = st.sidebar.text_input("Pagamento:", value="Ri.Ba. 60 giorni")
+campo_trasporto = st.sidebar.text_input("Trasporto:", value="P.to Franco")
+campo_validita = st.sidebar.text_input("Validità Offerta:", value="30.06.2026")
 
 st.sidebar.divider()
 
