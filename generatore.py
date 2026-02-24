@@ -115,8 +115,17 @@ with col_esp4:
 
 if st.session_state['espositori_selezionati']:
     st.sidebar.markdown("**Espositori inclusi nel preventivo:**")
+    
+    # Piccolo dizionario per la sidebar
+    nomi_belli = {
+        "ATG banco.jpg": "Espositore ATG girevole da Banco",
+        "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
+        "Base banco.jpg": "Espositore BASE da Banco 1 Modello",
+        "BASE terra.jpg": "Espositore BASE da terra 7 modelli"
+    }
+    
     for esp in st.session_state['espositori_selezionati']:
-        st.sidebar.success(f"✅ {esp.replace('.jpg','')}")
+        st.sidebar.success(f"✅ {nomi_belli.get(esp, esp)}")
         
     if st.sidebar.button("❌ Rimuovi Tutti gli Espositori"):
         st.session_state['espositori_selezionati'] = []
@@ -384,13 +393,22 @@ if st.session_state['carrello']:
             if st.session_state['espositori_selezionati']:
                 pdf.ln(5)
                 
+                # Dizionario per i nomi degli espositori nel PDF
+                nomi_espositori_pdf = {
+                    "ATG banco.jpg": "Espositore ATG girevole da Banco",
+                    "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
+                    "Base banco.jpg": "Espositore BASE da Banco 1 Modello",
+                    "BASE terra.jpg": "Espositore BASE da terra 7 modelli"
+                }
+
                 for esp_file in st.session_state['espositori_selezionati']:
                     if pdf.get_y() > 220: 
                         pdf.add_page()
                     
                     current_y_esp = pdf.get_y()
                     
-                    nome_espositore = esp_file.replace('.jpg', '').upper()
+                    # Usa il nome dal dizionario se esiste, altrimenti usa il nome del file pulito
+                    descrizione_espositore = nomi_espositori_pdf.get(esp_file, esp_file.replace('.jpg', '').upper())
 
                     if os.path.exists(esp_file):
                         pdf.image(esp_file, x=10, y=current_y_esp, w=35)
@@ -404,7 +422,7 @@ if st.session_state['carrello']:
                     pdf.set_xy(50, current_y_esp + 10) 
                     pdf.set_font("helvetica", "B", 14)
                     pdf.set_text_color(0, 100, 0) 
-                    testo_omaggio = f"Modello: {nome_espositore}\nEspositore in OMAGGIO con questo ordine!"
+                    testo_omaggio = f"Modello: {descrizione_espositore}\nEspositore in OMAGGIO con questo ordine!"
                     pdf.multi_cell(0, 7, testo_omaggio)
                     pdf.set_text_color(0, 0, 0) 
                     
