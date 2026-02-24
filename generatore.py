@@ -258,7 +258,7 @@ if st.session_state['carrello']:
             st.rerun()
             
     with c_p2:
-        if st.button("📄 Genera ed Esporta PDF", use_container_width=True, type="primary"):
+        if st.button("📄 Prepara PDF per il Download", use_container_width=True):
             raggruppo = {}
             for r in st.session_state['carrello']:
                 art = r["Articolo"]
@@ -286,13 +286,13 @@ if st.session_state['carrello']:
                     self.set_xy(100, 15)
                     self.cell(100, 6, "Spett.le", align="R", ln=1)
                     
-                    # Nome Cliente (Molto più grande)
+                    # Nome Cliente
                     self.set_font("helvetica", "B", 20) 
                     self.set_x(100) 
                     testo_nome = nome_cliente if nome_cliente else "Cliente"
                     self.cell(100, 8, testo_nome, align="R", ln=1)
                     
-                    # Nome Referente (Grandezza standard precedente)
+                    # Nome Referente
                     if nome_referente:
                         self.set_font("helvetica", "", 15) 
                         self.set_x(100)
@@ -429,19 +429,20 @@ if st.session_state['carrello']:
                 pdf_bytes = bytes(pdf_out)
             else:
                 pdf_bytes = bytes(pdf_out)
-
-            b64 = base64.b64encode(pdf_bytes).decode('utf-8')
+            
+            # Pulizia del nome cliente per creare un nome file sicuro
+            nome_sicuro = "".join(x for x in nome_cliente if x.isalnum() or x in " -_").strip()
+            nome_sicuro = nome_sicuro.replace(" ", "_") if nome_sicuro else "Cliente"
+            nome_file_dinamico = f"Preventivo_{nome_sicuro}.pdf"
             
             st.divider()
-            st.info("💡 Se non visualizzi l'anteprima qui sotto, clicca sul tasto 'Scarica PDF'.")
-            
-            pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
+            st.success("✅ PDF pronto per essere scaricato!")
             
             st.download_button(
-                label="⬇️ Scarica PDF",
+                label=f"⬇️ Clicca qui per Salvare '{nome_file_dinamico}'",
                 data=pdf_bytes,
-                file_name="Preventivo_Aggiornato.pdf",
+                file_name=nome_file_dinamico,
                 mime="application/pdf",
-                use_container_width=True
+                use_container_width=True,
+                type="primary"
             )
