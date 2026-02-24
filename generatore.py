@@ -6,6 +6,7 @@ import os
 import tempfile
 import base64
 from fpdf import FPDF
+from datetime import datetime # NUOVO: serve per leggere la data di oggi
 
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
@@ -130,6 +131,13 @@ if st.session_state['espositori_selezionati']:
     if st.sidebar.button("❌ Rimuovi Tutti gli Espositori"):
         st.session_state['espositori_selezionati'] = []
         st.rerun()
+
+st.sidebar.divider()
+
+# --- NUOVI CAMPI: CONDIZIONI COMMERCIALI ---
+st.sidebar.header("⚖️ Condizioni Commerciali")
+campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg fine mese...")
+campo_validita = st.sidebar.text_input("Validità Offerta:", placeholder="es. 30 giorni...")
 
 st.sidebar.divider()
 
@@ -395,10 +403,10 @@ if st.session_state['carrello']:
                 
                 # Dizionario per i nomi degli espositori nel PDF
                 nomi_espositori_pdf = {
-                    "ATG banco.jpg": "Espositore ATG Girevole da Banco",
+                    "ATG banco.jpg": "Espositore ATG girevole da Banco",
                     "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
                     "Base banco.jpg": "Espositore BASE da Banco 1 Modello",
-                    "BASE terra.jpg": "Espositore BASE da Terra 7 Modelli"
+                    "BASE terra.jpg": "Espositore BASE da terra 7 modelli"
                 }
 
                 for esp_file in st.session_state['espositori_selezionati']:
@@ -429,17 +437,33 @@ if st.session_state['carrello']:
                     pdf.set_y(current_y_esp + 45) 
             # =========================================================
 
-            # --- NOTE (AGGIORNATE A GRANDEZZA 13) ---
+            # --- NOTE ---
             if note_preventivo.strip():
                 pdf.ln(5)
-                pdf.set_font("helvetica", "B", 14) # Titolo un po' più grande (14)
+                pdf.set_font("helvetica", "B", 14) 
                 pdf.cell(0, 8, "Note:")
                 pdf.ln(8)
-                pdf.set_font("helvetica", "", 13) # Testo delle note a 13
+                pdf.set_font("helvetica", "", 13) 
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
             
+            # --- PAGAMENTO E VALIDITA' OFFERTA ---
+            if campo_pagamento.strip() or campo_validita.strip():
+                pdf.ln(5)
+                if campo_pagamento.strip():
+                    pdf.set_font("helvetica", "B", 12)
+                    pdf.cell(30, 6, "Pagamento:")
+                    pdf.set_font("helvetica", "", 12)
+                    pdf.cell(0, 6, campo_pagamento, ln=1)
+                
+                if campo_validita.strip():
+                    pdf.set_font("helvetica", "B", 12)
+                    pdf.cell(40, 6, "Validità Offerta:")
+                    pdf.set_font("helvetica", "", 12)
+                    pdf.cell(0, 6, campo_validita, ln=1)
+                pdf.ln(10)
+
             # --- FIRMA COMPATTATA A 2 RIGHE ---
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
@@ -455,10 +479,11 @@ if st.session_state['carrello']:
             else:
                 pdf_bytes = bytes(pdf_out)
             
-            # Pulizia del nome cliente per creare un nome file sicuro
+            # --- CREAZIONE DEL NOME FILE: Cliente_gg.mm.aaaa.pdf ---
+            data_oggi = datetime.now().strftime("%d.%m.%Y")
             nome_sicuro = "".join(x for x in nome_cliente if x.isalnum() or x in " -_").strip()
             nome_sicuro = nome_sicuro.replace(" ", "_") if nome_sicuro else "Cliente"
-            nome_file_dinamico = f"Preventivo_{nome_sicuro}.pdf"
+            nome_file_dinamico = f"{nome_sicuro}_{data_oggi}.pdf"
             
             st.divider()
             st.success("✅ PDF pronto per essere scaricato!")
