@@ -136,6 +136,8 @@ st.sidebar.divider()
 # --- CAMPI: CONDIZIONI COMMERCIALI ---
 st.sidebar.header("⚖️ Condizioni Commerciali")
 campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg fine mese...")
+# --- NUOVO CAMPO TRASPORTO AGGIUNTO QUI ---
+campo_trasporto = st.sidebar.text_input("Trasporto:", placeholder="es. Porto Franco o Franco Partenza...")
 campo_validita = st.sidebar.text_input("Validità Offerta:", placeholder="es. 30 giorni...")
 
 st.sidebar.divider()
@@ -394,12 +396,9 @@ if st.session_state['carrello']:
                 pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
                 pdf.ln(10)
 
-            # =========================================================
-            # --- INSERIMENTO ESPOSITORI MULTIPLI NEL PDF ---
-            # =========================================================
+            # --- ESPOSITORI ---
             if st.session_state['espositori_selezionati']:
                 pdf.ln(5)
-                
                 nomi_espositori_pdf = {
                     "ATG banco.jpg": "Espositore ATG girevole da Banco",
                     "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
@@ -412,7 +411,6 @@ if st.session_state['carrello']:
                         pdf.add_page()
                     
                     current_y_esp = pdf.get_y()
-                    
                     descrizione_espositore = nomi_espositori_pdf.get(esp_file, esp_file.replace('.jpg', '').upper())
 
                     if os.path.exists(esp_file):
@@ -430,7 +428,6 @@ if st.session_state['carrello']:
                     testo_omaggio = f"Modello: {descrizione_espositore}\nEspositore in OMAGGIO con questo ordine!"
                     pdf.multi_cell(0, 7, testo_omaggio)
                     pdf.set_text_color(0, 0, 0) 
-                    
                     pdf.set_y(current_y_esp + 45) 
 
             # --- NOTE ---
@@ -442,16 +439,22 @@ if st.session_state['carrello']:
                 pdf.set_font("helvetica", "", 13) 
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
-                # Ho rimosso lo spazio extra qui per mantenere le righe ravvicinate
             
-            # --- PAGAMENTO, VALIDITA' E PREZZI ---
-            pdf.ln(4) # Lascia circa 1 rigo di spazio dopo le note
+            # --- PAGAMENTO, TRASPORTO, VALIDITA' E PREZZI ---
+            pdf.ln(4) 
             
             if campo_pagamento.strip():
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(28, 6, "Pagamento:")
                 pdf.set_font("helvetica", "", 12)
                 pdf.cell(0, 6, campo_pagamento, ln=1)
+
+            # --- LOGICA TRASPORTO AGGIUNTA NEL PDF ---
+            if campo_trasporto.strip():
+                pdf.set_font("helvetica", "B", 12)
+                pdf.cell(28, 6, "Trasporto:")
+                pdf.set_font("helvetica", "", 12)
+                pdf.cell(0, 6, campo_trasporto, ln=1)
             
             if campo_validita.strip():
                 pdf.set_font("helvetica", "B", 12)
@@ -459,13 +462,12 @@ if st.session_state['carrello']:
                 pdf.set_font("helvetica", "", 12)
                 pdf.cell(0, 6, campo_validita, ln=1)
                 
-            # Campo "Prezzi" sempre visibile come richiesto
             pdf.set_font("helvetica", "B", 12)
             pdf.cell(16, 6, "Prezzi:")
             pdf.set_font("helvetica", "", 12)
             pdf.cell(0, 6, "netti iva esclusa", ln=1)
 
-            # --- FIRMA COMPATTATA A 2 RIGHE ---
+            # --- FIRMA ---
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
             pdf.cell(0, 6, "Michele Cavallo - Area Manager | Base Protection srl", align="R", ln=1)
@@ -475,8 +477,6 @@ if st.session_state['carrello']:
             
             if isinstance(pdf_out, str):
                 pdf_bytes = pdf_out.encode('latin-1')
-            elif isinstance(pdf_out, bytearray):
-                pdf_bytes = bytes(pdf_out)
             else:
                 pdf_bytes = bytes(pdf_out)
             
