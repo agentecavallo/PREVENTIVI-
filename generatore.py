@@ -11,7 +11,6 @@ from fpdf import FPDF
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
 
 # --- TRUCCHETTO CSS PER IL CAMPO VERDE ---
-# Questo codice colora di verde chiaro lo sfondo dei campi di testo principali
 st.markdown("""
 <style>
 div[data-testid="stTextInput"] input {
@@ -27,8 +26,6 @@ div[data-testid="stTextInput"] input {
 if 'carrello' not in st.session_state:
     st.session_state['carrello'] = []
 
-# --- NUOVO: MEMORIA PER PIU' ESPOSITORI ---
-# Ora usiamo una lista [] invece di un singolo valore
 if 'espositori_selezionati' not in st.session_state:
     st.session_state['espositori_selezionati'] = []
 
@@ -56,7 +53,9 @@ df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 # --- SIDEBAR: DATI CLIENTE, SCONTI, NOTE E ESPOSITORI ---
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
-nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
+nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Ragione Sociale...")
+# NUOVO CAMPO: Nome Referente
+nome_referente = st.sidebar.text_input("Nome Referente:", placeholder="Mario Rossi...")
 
 st.sidebar.divider()
 
@@ -86,7 +85,6 @@ col_esp1, col_esp2 = st.sidebar.columns(2)
 col_esp3, col_esp4 = st.sidebar.columns(2)
 
 def seleziona_espositore(nome_file_img):
-    # Aggiunge l'espositore solo se non è già stato cliccato
     if nome_file_img not in st.session_state['espositori_selezionati']:
         st.session_state['espositori_selezionati'].append(nome_file_img)
         st.toast(f"Aggiunto: {nome_file_img.replace('.jpg','')}", icon="✅")
@@ -106,7 +104,6 @@ with col_esp4:
     if st.button("Base Terra", use_container_width=True):
         seleziona_espositore("BASE terra.jpg")
 
-# Mostra tutti gli espositori selezionati e permette di svuotarli
 if st.session_state['espositori_selezionati']:
     st.sidebar.markdown("**Espositori inclusi nel preventivo:**")
     for esp in st.session_state['espositori_selezionati']:
@@ -137,7 +134,6 @@ else:
 if df_corrente is None:
     st.warning(f"⚠️ Il file Excel per il '{catalogo}' non è stato trovato nella cartella. Assicurati che i nomi dei file siano 'Listino_agente.xlsx' e 'Listino_ATG.xlsx'.")
 else:
-    # Testo reso esplicitamente verde usando la formattazione Markdown di Streamlit
     st.markdown("### 🟢 :green[Ricerca Articolo]")
     ricerca = st.text_input("Inserisci nome modello:", placeholder="Digita qui il modello...").upper()
 
@@ -279,17 +275,28 @@ if st.session_state['carrello']:
 
             class PDF(FPDF):
                 def header(self):
+                    # Logo
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
                             self.image(f, 10, 8, 60)
                             break
-                    self.set_font("helvetica", "B", 15)
+                            
+                    # Spett.le
+                    self.set_font("helvetica", "", 12)
                     self.set_xy(100, 15)
+                    self.cell(100, 6, "Spett.le", align="R", ln=1)
                     
-                    self.cell(100, 8, "Spett.le", align="R", ln=1)
+                    # Nome Cliente (Molto più grande)
+                    self.set_font("helvetica", "B", 20) 
                     self.set_x(100) 
                     testo_nome = nome_cliente if nome_cliente else "Cliente"
                     self.cell(100, 8, testo_nome, align="R", ln=1)
+                    
+                    # Nome Referente (Grandezza standard precedente)
+                    if nome_referente:
+                        self.set_font("helvetica", "", 15) 
+                        self.set_x(100)
+                        self.cell(100, 7, f"c.a. {nome_referente}", align="R", ln=1)
                     
                     self.ln(20) 
 
@@ -360,7 +367,7 @@ if st.session_state['carrello']:
             if totale_generale > 0:
                 pdf.set_font("helvetica", "B", 14)
                 pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
-                pdf.ln(10) # Leggermente ridotto lo spazio qui
+                pdf.ln(10)
 
             # =========================================================
             # --- INSERIMENTO ESPOSITORI MULTIPLI NEL PDF ---
@@ -369,17 +376,14 @@ if st.session_state['carrello']:
                 pdf.ln(5)
                 
                 for esp_file in st.session_state['espositori_selezionati']:
-                    # Se lo spazio sta finendo, andiamo alla pagina nuova
                     if pdf.get_y() > 220: 
                         pdf.add_page()
                     
                     current_y_esp = pdf.get_y()
                     
-                    # Estraiamo il nome per scriverlo (togliamo il .jpg)
                     nome_espositore = esp_file.replace('.jpg', '').upper()
 
                     if os.path.exists(esp_file):
-                        # Immagine a sinistra, un po' più piccola per farne entrare di più
                         pdf.image(esp_file, x=10, y=current_y_esp, w=35)
                     else:
                         pdf.set_xy(10, current_y_esp)
@@ -388,15 +392,13 @@ if st.session_state['carrello']:
                         pdf.cell(35, 10, f"Foto Mancante", ln=1)
                         pdf.set_text_color(0,0,0)
 
-                    # Testo a destra dell'immagine
                     pdf.set_xy(50, current_y_esp + 10) 
                     pdf.set_font("helvetica", "B", 14)
-                    pdf.set_text_color(0, 100, 0) # Verde scuro
+                    pdf.set_text_color(0, 100, 0) 
                     testo_omaggio = f"Modello: {nome_espositore}\nEspositore in OMAGGIO con questo ordine!"
                     pdf.multi_cell(0, 7, testo_omaggio)
-                    pdf.set_text_color(0, 0, 0) # Ritorno al nero
+                    pdf.set_text_color(0, 0, 0) 
                     
-                    # Sposta il cursore in basso per l'eventuale prossimo espositore
                     pdf.set_y(current_y_esp + 45) 
             # =========================================================
 
