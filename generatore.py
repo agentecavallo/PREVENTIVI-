@@ -37,10 +37,13 @@ df_agente = carica_dati('Listino_agente.xlsx', "agente")
 df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 
 # =========================================================
-# --- SIDEBAR: DATI CLIENTE E SCONTI DOPPI ---
+# --- SIDEBAR: DATI CLIENTE, NOTE E SCONTI DOPPI ---
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
+
+# Aggiunto il grande campo note da 400px
+note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note...")
 
 st.sidebar.divider()
 
@@ -48,7 +51,7 @@ st.sidebar.divider()
 st.sidebar.header("💰 Sconto Agente")
 col_sc1, col_sc2, col_sc3 = st.sidebar.columns(3)
 sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0, key="sc_ag1")
-sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 0.0, key="sc_ag2")
+sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 10.0, key="sc_ag2") # Impostato a 10 di default
 sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0, key="sc_ag3")
 
 st.sidebar.divider()
@@ -57,7 +60,7 @@ st.sidebar.divider()
 st.sidebar.header("🧤 Sconto ATG")
 col_atg1, col_atg2, col_atg3 = st.sidebar.columns(3)
 sc_atg1 = col_atg1.number_input("Sc. ATG 1 %", 0.0, 100.0, 40.0, key="sc_atg1")
-sc_atg2 = col_atg2.number_input("Sc. ATG 2 %", 0.0, 100.0, 0.0, key="sc_atg2")
+sc_atg2 = col_atg2.number_input("Sc. ATG 2 %", 0.0, 100.0, 10.0, key="sc_atg2") # Impostato a 10 di default
 sc_atg3 = col_atg3.number_input("Sc. ATG 3 %", 0.0, 100.0, 0.0, key="sc_atg3")
 
 # =========================================================
@@ -291,6 +294,17 @@ if st.session_state['carrello']:
             if totale_generale > 0:
                 pdf.set_font("helvetica", "B", 14)
                 pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
+                pdf.ln(15)
+
+            # --- SEZIONE NOTE (AGGIUNTA A FINE PREVENTIVO) ---
+            if note_preventivo.strip():
+                pdf.set_font("helvetica", "B", 12)
+                pdf.cell(0, 8, "Note:")
+                pdf.ln(8)
+                pdf.set_font("helvetica", "", 10)
+                # Sostituiamo il simbolo dell'euro con la parola "Euro" per sicurezza (FPDF a volte non lo digerisce)
+                testo_note = note_preventivo.replace('€', 'Euro')
+                pdf.multi_cell(0, 6, testo_note)
             
             pdf_out = pdf.output()
             
