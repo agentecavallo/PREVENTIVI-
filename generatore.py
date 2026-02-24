@@ -267,7 +267,6 @@ if st.session_state['carrello']:
             st.rerun()
             
     with c_p2:
-        # HO AGGIUNTO type="primary" QUI PER FARLO DIVENTARE VERDE!
         if st.button("📄 Prepara PDF per il Download", use_container_width=True, type="primary"):
             raggruppo = {}
             for r in st.session_state['carrello']:
@@ -412,13 +411,13 @@ if st.session_state['carrello']:
                     pdf.set_y(current_y_esp + 45) 
             # =========================================================
 
-            # --- NOTE ---
+            # --- NOTE (AGGIORNATE A GRANDEZZA 13) ---
             if note_preventivo.strip():
                 pdf.ln(5)
-                pdf.set_font("helvetica", "B", 12)
+                pdf.set_font("helvetica", "B", 14) # Titolo un po' più grande (14)
                 pdf.cell(0, 8, "Note:")
                 pdf.ln(8)
-                pdf.set_font("helvetica", "", 10)
+                pdf.set_font("helvetica", "", 13) # Testo delle note a 13
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
