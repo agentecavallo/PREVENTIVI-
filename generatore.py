@@ -395,10 +395,10 @@ if st.session_state['carrello']:
                 
                 # Dizionario per i nomi degli espositori nel PDF
                 nomi_espositori_pdf = {
-                    "ATG banco.jpg": "Espositore ATG girevole da Banco",
+                    "ATG banco.jpg": "Espositore ATG Girevole da Banco",
                     "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
                     "Base banco.jpg": "Espositore BASE da Banco 1 Modello",
-                    "BASE terra.jpg": "Espositore BASE da terra 7 modelli"
+                    "BASE terra.jpg": "Espositore BASE da Terra 7 Modelli"
                 }
 
                 for esp_file in st.session_state['espositori_selezionati']:
