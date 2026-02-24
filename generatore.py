@@ -65,7 +65,7 @@ note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite 
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
-st.title("📄 Realizzatore di Offerte Professionali")
+st.title("📄 OFFERTE & ORDINI")
 
 catalogo = st.radio("📂 Scegli in quale Listino cercare:", ["Listino Base", "Listino ATG"], horizontal=True)
 
