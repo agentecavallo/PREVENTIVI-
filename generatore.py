@@ -16,7 +16,7 @@ if 'carrello' not in st.session_state:
 
 # --- CARICAMENTO DATI ---
 @st.cache_data
-def carica_dati(path, tipo="agente"):
+def carica_dati(path, tipo="base"):
     if not os.path.exists(path):
         return None
     try:
@@ -33,26 +33,24 @@ def carica_dati(path, tipo="agente"):
     except:
         return None
 
-df_agente = carica_dati('Listino_agente.xlsx', "agente")
+# Cerchiamo comunque il file nominato Listino_agente.xlsx per comodità tua, ma lo trattiamo come "base"
+df_base = carica_dati('Listino_agente.xlsx', "base")
 df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 
 # =========================================================
-# --- SIDEBAR: DATI CLIENTE, NOTE E SCONTI DOPPI ---
+# --- SIDEBAR: DATI CLIENTE, SCONTI E NOTE ---
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Spett.le...")
 
-# Aggiunto il grande campo note da 400px
-note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note...")
-
 st.sidebar.divider()
 
-# Sconti Agente
-st.sidebar.header("💰 Sconto Agente")
+# Sconti Base
+st.sidebar.header("💰 Sconto Base")
 col_sc1, col_sc2, col_sc3 = st.sidebar.columns(3)
-sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0, key="sc_ag1")
-sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 10.0, key="sc_ag2") # Impostato a 10 di default
-sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0, key="sc_ag3")
+sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0, key="sc_base1")
+sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 10.0, key="sc_base2") # Impostato a 10 di default
+sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0, key="sc_base3")
 
 st.sidebar.divider()
 
@@ -63,17 +61,23 @@ sc_atg1 = col_atg1.number_input("Sc. ATG 1 %", 0.0, 100.0, 40.0, key="sc_atg1")
 sc_atg2 = col_atg2.number_input("Sc. ATG 2 %", 0.0, 100.0, 10.0, key="sc_atg2") # Impostato a 10 di default
 sc_atg3 = col_atg3.number_input("Sc. ATG 3 %", 0.0, 100.0, 0.0, key="sc_atg3")
 
+st.sidebar.divider()
+
+# Il grande campo note spostato sotto gli sconti
+note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note (es. tempi di consegna, validità offerta, ecc.)...")
+
+
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
 st.title("📄 Realizzatore di Offerte Professionali")
 
 # SELEZIONE CATALOGO
-catalogo = st.radio("📂 Scegli in quale Listino cercare:", ["Listino Agente", "Listino ATG"], horizontal=True)
+catalogo = st.radio("📂 Scegli in quale Listino cercare:", ["Listino Base", "Listino ATG"], horizontal=True)
 
 # Imposta il dataframe e gli sconti in base alla scelta
-if catalogo == "Listino Agente":
-    df_corrente = df_agente
+if catalogo == "Listino Base":
+    df_corrente = df_base
     sconto_applicato = (sc1, sc2, sc3)
 else:
     df_corrente = df_atg
@@ -81,7 +85,7 @@ else:
 
 # Verifica che il file esista prima di procedere
 if df_corrente is None:
-    st.warning(f"⚠️ Il file per il '{catalogo}' non è stato trovato nella cartella. Assicurati che il nome sia corretto (Listino_agente.xlsx oppure Listino_ATG.xlsx).")
+    st.warning(f"⚠️ Il file Excel per il '{catalogo}' non è stato trovato nella cartella. Assicurati che i nomi dei file siano 'Listino_agente.xlsx' e 'Listino_ATG.xlsx'.")
 else:
     st.header("🔍 Ricerca Articolo")
     ricerca = st.text_input("Inserisci nome modello:", placeholder="Digita qui il modello...").upper()
@@ -126,7 +130,7 @@ else:
                     st.write("**Quantità per Taglia:**")
                     
                     # Definiamo le taglie in base al catalogo
-                    if catalogo == "Listino Agente":
+                    if catalogo == "Listino Base":
                         taglie_disponibili = list(range(35, 51))
                     else:
                         taglie_disponibili = [6, 7, 8, 9, 10, 11, 12] # Taglie standard guanti ATG
@@ -182,7 +186,7 @@ else:
                         st.rerun()
                     
             with c2:
-                # Gestione immagine (solo per Agente o se è presente per caso in ATG)
+                # Gestione immagine (solo per Base o se è presente per caso in ATG)
                 url = str(d.get('IMMAGINE', '')).strip()
                 if url.startswith('http'):
                     try:
@@ -302,10 +306,16 @@ if st.session_state['carrello']:
                 pdf.cell(0, 8, "Note:")
                 pdf.ln(8)
                 pdf.set_font("helvetica", "", 10)
-                # Sostituiamo il simbolo dell'euro con la parola "Euro" per sicurezza (FPDF a volte non lo digerisce)
+                # Sostituiamo il simbolo dell'euro con la parola "Euro" per sicurezza
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
+                pdf.ln(10)
             
+            # --- SEZIONE FIRMA MICHELE CAVALLO ---
+            pdf.ln(10)
+            pdf.set_font("helvetica", "I", 11)
+            pdf.cell(0, 10, "Michele Cavallo - Base Protection srl", align="R")
+
             pdf_out = pdf.output()
             
             if isinstance(pdf_out, str):
