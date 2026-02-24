@@ -6,7 +6,7 @@ import os
 import tempfile
 import base64
 from fpdf import FPDF
-from datetime import datetime # NUOVO: serve per leggere la data di oggi
+from datetime import datetime
 
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
@@ -117,7 +117,6 @@ with col_esp4:
 if st.session_state['espositori_selezionati']:
     st.sidebar.markdown("**Espositori inclusi nel preventivo:**")
     
-    # Piccolo dizionario per la sidebar
     nomi_belli = {
         "ATG banco.jpg": "Espositore ATG girevole da Banco",
         "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
@@ -134,7 +133,7 @@ if st.session_state['espositori_selezionati']:
 
 st.sidebar.divider()
 
-# --- NUOVI CAMPI: CONDIZIONI COMMERCIALI ---
+# --- CAMPI: CONDIZIONI COMMERCIALI ---
 st.sidebar.header("⚖️ Condizioni Commerciali")
 campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg fine mese...")
 campo_validita = st.sidebar.text_input("Validità Offerta:", placeholder="es. 30 giorni...")
@@ -401,7 +400,6 @@ if st.session_state['carrello']:
             if st.session_state['espositori_selezionati']:
                 pdf.ln(5)
                 
-                # Dizionario per i nomi degli espositori nel PDF
                 nomi_espositori_pdf = {
                     "ATG banco.jpg": "Espositore ATG girevole da Banco",
                     "ATG terra.jpg": "Espositore ATG in Metallo da Terra",
@@ -415,7 +413,6 @@ if st.session_state['carrello']:
                     
                     current_y_esp = pdf.get_y()
                     
-                    # Usa il nome dal dizionario se esiste, altrimenti usa il nome del file pulito
                     descrizione_espositore = nomi_espositori_pdf.get(esp_file, esp_file.replace('.jpg', '').upper())
 
                     if os.path.exists(esp_file):
@@ -435,7 +432,6 @@ if st.session_state['carrello']:
                     pdf.set_text_color(0, 0, 0) 
                     
                     pdf.set_y(current_y_esp + 45) 
-            # =========================================================
 
             # --- NOTE ---
             if note_preventivo.strip():
@@ -446,23 +442,28 @@ if st.session_state['carrello']:
                 pdf.set_font("helvetica", "", 13) 
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
-                pdf.ln(10)
+                # Ho rimosso lo spazio extra qui per mantenere le righe ravvicinate
             
-            # --- PAGAMENTO E VALIDITA' OFFERTA ---
-            if campo_pagamento.strip() or campo_validita.strip():
-                pdf.ln(5)
-                if campo_pagamento.strip():
-                    pdf.set_font("helvetica", "B", 12)
-                    pdf.cell(30, 6, "Pagamento:")
-                    pdf.set_font("helvetica", "", 12)
-                    pdf.cell(0, 6, campo_pagamento, ln=1)
+            # --- PAGAMENTO, VALIDITA' E PREZZI ---
+            pdf.ln(4) # Lascia circa 1 rigo di spazio dopo le note
+            
+            if campo_pagamento.strip():
+                pdf.set_font("helvetica", "B", 12)
+                pdf.cell(28, 6, "Pagamento:")
+                pdf.set_font("helvetica", "", 12)
+                pdf.cell(0, 6, campo_pagamento, ln=1)
+            
+            if campo_validita.strip():
+                pdf.set_font("helvetica", "B", 12)
+                pdf.cell(38, 6, "Validità Offerta:")
+                pdf.set_font("helvetica", "", 12)
+                pdf.cell(0, 6, campo_validita, ln=1)
                 
-                if campo_validita.strip():
-                    pdf.set_font("helvetica", "B", 12)
-                    pdf.cell(40, 6, "Validità Offerta:")
-                    pdf.set_font("helvetica", "", 12)
-                    pdf.cell(0, 6, campo_validita, ln=1)
-                pdf.ln(10)
+            # Campo "Prezzi" sempre visibile come richiesto
+            pdf.set_font("helvetica", "B", 12)
+            pdf.cell(16, 6, "Prezzi:")
+            pdf.set_font("helvetica", "", 12)
+            pdf.cell(0, 6, "netti iva esclusa", ln=1)
 
             # --- FIRMA COMPATTATA A 2 RIGHE ---
             pdf.ln(10)
@@ -479,7 +480,6 @@ if st.session_state['carrello']:
             else:
                 pdf_bytes = bytes(pdf_out)
             
-            # --- CREAZIONE DEL NOME FILE: Cliente_gg.mm.aaaa.pdf ---
             data_oggi = datetime.now().strftime("%d.%m.%Y")
             nome_sicuro = "".join(x for x in nome_cliente if x.isalnum() or x in " -_").strip()
             nome_sicuro = nome_sicuro.replace(" ", "_") if nome_sicuro else "Cliente"
