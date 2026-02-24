@@ -238,13 +238,15 @@ if st.session_state['carrello']:
                 def header(self):
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
-                            self.image(f, 10, 8, 30)
+                            # DIMENSIONI RADDOPPIATE: da 30 a 60
+                            self.image(f, 10, 8, 60)
                             break
                     self.set_font("helvetica", "B", 11)
                     self.set_xy(100, 15)
                     testo = f"Spett.le {nome_cliente}" if nome_cliente else "Spett.le Cliente"
                     self.cell(100, 10, testo, align="R")
-                    self.ln(20)
+                    # Aumentato lo spazio verticale per compensare il logo più grande
+                    self.ln(30)
 
             pdf = PDF()
             pdf.add_page()
@@ -259,84 +261,4 @@ if st.session_state['carrello']:
                 if dati["Img"].startswith("http"):
                     try:
                         res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                            tmp.write(res.content)
-                            pdf.image(tmp.name, x=155, y=y_inizio, w=35)
-                        os.remove(tmp.name)
-                    except: pass
-
-                # Testo a sinistra
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(135, 7, f"Modello: {art}")
-                pdf.ln(7)
-                pdf.set_font("helvetica", "", 10)
-                pdf.cell(135, 6, f"Prezzo Netto: {dati['Netto'].replace('€', 'Euro')}")
-                pdf.ln(6)
-                
-                if dati["T"]:
-                    pdf.set_font("helvetica", "I", 9)
-                    pdf.multi_cell(135, 5, " | ".join(dati["T"]))
-                else:
-                    pdf.set_font("helvetica", "I", 9)
-                    pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)")
-                    pdf.ln(5)
-                
-                if dati['Tot'] > 0:
-                    pdf.set_font("helvetica", "B", 10)
-                    pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro")
-                    pdf.ln(7)
-                else:
-                    pdf.ln(7)
-                
-                y_fine = max(pdf.get_y(), y_inizio + 40)
-                pdf.set_y(y_fine + 2)
-                pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-                pdf.ln(5)
-
-            pdf.ln(5)
-            
-            if totale_generale > 0:
-                pdf.set_font("helvetica", "B", 14)
-                pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
-                pdf.ln(15)
-
-            # --- SEZIONE NOTE (AGGIUNTA A FINE PREVENTIVO) ---
-            if note_preventivo.strip():
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(0, 8, "Note:")
-                pdf.ln(8)
-                pdf.set_font("helvetica", "", 10)
-                # Sostituiamo il simbolo dell'euro con la parola "Euro" per sicurezza
-                testo_note = note_preventivo.replace('€', 'Euro')
-                pdf.multi_cell(0, 6, testo_note)
-                pdf.ln(10)
-            
-            # --- SEZIONE FIRMA MICHELE CAVALLO ---
-            pdf.ln(10)
-            pdf.set_font("helvetica", "I", 11)
-            pdf.cell(0, 10, "Michele Cavallo - Base Protection srl", align="R")
-
-            pdf_out = pdf.output()
-            
-            if isinstance(pdf_out, str):
-                pdf_bytes = pdf_out.encode('latin-1')
-            elif isinstance(pdf_out, bytearray):
-                pdf_bytes = bytes(pdf_out)
-            else:
-                pdf_bytes = bytes(pdf_out)
-
-            b64 = base64.b64encode(pdf_bytes).decode('utf-8')
-            
-            st.divider()
-            st.info("💡 Se non visualizzi l'anteprima qui sotto, clicca sul tasto 'Scarica PDF'.")
-            
-            pdf_display = f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600" type="application/pdf"></iframe>'
-            st.markdown(pdf_display, unsafe_allow_html=True)
-            
-            st.download_button(
-                label="⬇️ Scarica PDF",
-                data=pdf_bytes,
-                file_name="Preventivo_Aggiornato.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
+                        with tempfile.Named
