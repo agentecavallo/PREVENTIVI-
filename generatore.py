@@ -22,10 +22,8 @@ def carica_dati(path, tipo="base"):
     try:
         data = pd.read_excel(path)
         if tipo == "atg":
-            # Mappiamo le prime 5 colonne come richiesto: A: articolo, B: rivestimento, C: q.tà box, D: range taglie, E: listino
             data = data.iloc[:, :5]
             data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO']
-            # Aggiungiamo una colonna IMMAGINE vuota per non far "rompere" il codice del PDF
             data['IMMAGINE'] = ""
         else:
             data.columns = [str(c).strip().upper() for c in data.columns]
@@ -33,7 +31,6 @@ def carica_dati(path, tipo="base"):
     except:
         return None
 
-# Cerchiamo comunque il file nominato Listino_agente.xlsx per comodità tua, ma lo trattiamo come "base"
 df_base = carica_dati('Listino_agente.xlsx', "base")
 df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 
@@ -49,7 +46,7 @@ st.sidebar.divider()
 st.sidebar.header("💰 Sconto Base")
 col_sc1, col_sc2, col_sc3 = st.sidebar.columns(3)
 sc1 = col_sc1.number_input("Sc. 1 %", 0.0, 100.0, 40.0, key="sc_base1")
-sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 10.0, key="sc_base2") # Impostato a 10 di default
+sc2 = col_sc2.number_input("Sc. 2 %", 0.0, 100.0, 10.0, key="sc_base2")
 sc3 = col_sc3.number_input("Sc. 3 %", 0.0, 100.0, 0.0, key="sc_base3")
 
 st.sidebar.divider()
@@ -58,24 +55,20 @@ st.sidebar.divider()
 st.sidebar.header("🧤 Sconto ATG")
 col_atg1, col_atg2, col_atg3 = st.sidebar.columns(3)
 sc_atg1 = col_atg1.number_input("Sc. ATG 1 %", 0.0, 100.0, 40.0, key="sc_atg1")
-sc_atg2 = col_atg2.number_input("Sc. ATG 2 %", 0.0, 100.0, 10.0, key="sc_atg2") # Impostato a 10 di default
+sc_atg2 = col_atg2.number_input("Sc. ATG 2 %", 0.0, 100.0, 10.0, key="sc_atg2")
 sc_atg3 = col_atg3.number_input("Sc. ATG 3 %", 0.0, 100.0, 0.0, key="sc_atg3")
 
 st.sidebar.divider()
 
-# Il grande campo note spostato sotto gli sconti
 note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note (es. tempi di consegna, validità offerta, ecc.)...")
-
 
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
 st.title("📄 Realizzatore di Offerte Professionali")
 
-# SELEZIONE CATALOGO
 catalogo = st.radio("📂 Scegli in quale Listino cercare:", ["Listino Base", "Listino ATG"], horizontal=True)
 
-# Imposta il dataframe e gli sconti in base alla scelta
 if catalogo == "Listino Base":
     df_corrente = df_base
     sconto_applicato = (sc1, sc2, sc3)
@@ -83,7 +76,6 @@ else:
     df_corrente = df_atg
     sconto_applicato = (sc_atg1, sc_atg2, sc_atg3)
 
-# Verifica che il file esista prima di procedere
 if df_corrente is None:
     st.warning(f"⚠️ Il file Excel per il '{catalogo}' non è stato trovato nella cartella. Assicurati che i nomi dei file siano 'Listino_agente.xlsx' e 'Listino_ATG.xlsx'.")
 else:
@@ -103,20 +95,16 @@ else:
             with c1:
                 st.subheader(f"Modello: {d['ARTICOLO']}")
                 
-                # Se è ATG, mostra i dati aggiuntivi
                 if catalogo == "Listino ATG":
                     st.caption(f"**Rivestimento:** {d.get('RIVESTIMENTO', '-')} | **Q.tà Box:** {d.get('QTA_BOX', '-')} | **Range Taglie:** {d.get('RANGE_TAGLIE', '-')}")
                 
                 prezzo_listino = float(d['LISTINO'])
-                
-                # Calcolo Prezzo Netto dinamico
                 s1, s2, s3 = sconto_applicato
                 prezzo_netto = prezzo_listino * (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
                 st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
                 
                 st.divider()
                 
-                # --- MODALITÀ DI INSERIMENTO ---
                 modalita = st.radio(
                     "Scegli la modalità di inserimento:", 
                     ["Specifica Taglie", "Solo Modello/Vetrina (Senza taglie)"], 
@@ -129,11 +117,10 @@ else:
                 if modalita == "Specifica Taglie":
                     st.write("**Quantità per Taglia:**")
                     
-                    # Definiamo le taglie in base al catalogo
                     if catalogo == "Listino Base":
                         taglie_disponibili = list(range(35, 51))
                     else:
-                        taglie_disponibili = [6, 7, 8, 9, 10, 11, 12] # Taglie standard guanti ATG
+                        taglie_disponibili = [6, 7, 8, 9, 10, 11, 12]
                     
                     if st.button("🔄 Azzera Campi"):
                         for t in taglie_disponibili:
@@ -142,7 +129,6 @@ else:
 
                     quantita_taglie = {}
                     
-                    # Generatore di griglia flessibile (max 8 per riga)
                     for i in range(0, len(taglie_disponibili), 8):
                         chunk = taglie_disponibili[i:i+8]
                         cols = st.columns(8)
@@ -186,7 +172,6 @@ else:
                         st.rerun()
                     
             with c2:
-                # Gestione immagine (solo per Base o se è presente per caso in ATG)
                 url = str(d.get('IMMAGINE', '')).strip()
                 if url.startswith('http'):
                     try:
@@ -195,7 +180,6 @@ else:
                     except: 
                         st.write("Immagine non disponibile")
                 elif catalogo == "Listino ATG":
-                    # Spazio decorativo per ATG se non ci sono immagini
                     st.markdown("### 🧤 **Prodotto ATG**")
                     st.write("*(Nessuna immagine nel listino)*")
 
@@ -238,15 +222,12 @@ if st.session_state['carrello']:
                 def header(self):
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
-                            # DIMENSIONI RADDOPPIATE: da 30 a 60
                             self.image(f, 10, 8, 60)
                             break
-                    # AUMENTATA LA DIMENSIONE DEL FONT DEL NOME CLIENTE (da 11 a 15)
                     self.set_font("helvetica", "B", 15)
                     self.set_xy(100, 15)
                     testo = f"Spett.le {nome_cliente}" if nome_cliente else "Spett.le Cliente"
                     self.cell(100, 10, testo, align="R")
-                    # Aumentato lo spazio verticale per compensare il logo più grande
                     self.ln(30)
 
             pdf = PDF()
@@ -259,7 +240,7 @@ if st.session_state['carrello']:
                     y_inizio = pdf.get_y()
 
                 foto_inserita = False
-                # Immagine a destra (se presente)
+                # Gestione immagine sulla destra
                 if dati["Img"].startswith("http"):
                     try:
                         res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
@@ -272,42 +253,39 @@ if st.session_state['carrello']:
                     except: 
                         pass
                 
-                # Se l'immagine non c'è o c'è stato un errore nel caricarla, mostriamo il testo
                 if not foto_inserita:
                     pdf.set_xy(155, y_inizio + 10)
                     pdf.set_font("helvetica", "I", 9)
-                    pdf.set_text_color(150, 150, 150) # Colore grigio
+                    pdf.set_text_color(150, 150, 150)
                     pdf.cell(35, 10, "Foto non disponibile", align="C")
-                    pdf.set_text_color(0, 0, 0) # Rimettiamo il colore nero per il testo successivo
+                    pdf.set_text_color(0, 0, 0)
                     
-                # Riposizioniamo il cursore a sinistra per scrivere i dati dell'articolo
+                # Ritorno forzato a sinistra per i testi e blocco allineamento
                 pdf.set_xy(10, y_inizio)
 
-                # Testo a sinistra
                 pdf.set_font("helvetica", "B", 12)
-                pdf.cell(135, 7, f"Modello: {art}")
-                pdf.ln(7)
+                pdf.cell(135, 7, f"Modello: {art}", ln=1)
+                
                 pdf.set_font("helvetica", "", 10)
-                pdf.cell(135, 6, f"Prezzo Netto: {dati['Netto'].replace('€', 'Euro')}")
-                pdf.ln(6)
+                pdf.cell(135, 6, f"Prezzo Netto: {dati['Netto'].replace('€', 'Euro')}", ln=1)
                 
                 if dati["T"]:
                     pdf.set_font("helvetica", "I", 9)
                     pdf.multi_cell(135, 5, " | ".join(dati["T"]))
                 else:
                     pdf.set_font("helvetica", "I", 9)
-                    pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)")
-                    pdf.ln(5)
+                    pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)", ln=1)
                 
+                # Il Subtotale ora è ancorato a SINISTRA, al sicuro dalle immagini
                 if dati['Tot'] > 0:
                     pdf.set_font("helvetica", "B", 10)
-                    pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro")
-                    pdf.ln(7)
+                    pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro", ln=1)
                 else:
-                    pdf.ln(7)
+                    pdf.ln(2)
                 
-                y_fine = max(pdf.get_y(), y_inizio + 40)
-                pdf.set_y(y_fine + 2)
+                # Aumentato il margine inferiore di sicurezza per le immagini (da +40 a +45)
+                y_fine = max(pdf.get_y(), y_inizio + 45)
+                pdf.set_y(y_fine)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
 
@@ -318,18 +296,17 @@ if st.session_state['carrello']:
                 pdf.cell(0, 10, f"TOTALE GENERALE: {totale_generale:.2f} Euro", align="R")
                 pdf.ln(15)
 
-            # --- SEZIONE NOTE (AGGIUNTA A FINE PREVENTIVO) ---
+            # Note
             if note_preventivo.strip():
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(0, 8, "Note:")
                 pdf.ln(8)
                 pdf.set_font("helvetica", "", 10)
-                # Sostituiamo il simbolo dell'euro con la parola "Euro" per sicurezza
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
             
-            # --- SEZIONE FIRMA MICHELE CAVALLO ---
+            # Firma
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
             pdf.cell(0, 10, "Michele Cavallo - Base Protection srl", align="R")
