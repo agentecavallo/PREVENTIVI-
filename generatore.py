@@ -62,7 +62,6 @@ st.sidebar.divider()
 
 note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note (es. tempi di consegna, validità offerta, ecc.)...")
 
-
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
@@ -227,9 +226,14 @@ if st.session_state['carrello']:
                             break
                     self.set_font("helvetica", "B", 15)
                     self.set_xy(100, 15)
-                    testo = f"Spett.le {nome_cliente}" if nome_cliente else "Spett.le Cliente"
-                    self.cell(100, 10, testo, align="R")
-                    self.ln(30)
+                    
+                    # Nome Cliente a capo
+                    self.cell(100, 8, "Spett.le", align="R", ln=1)
+                    self.set_x(100) # Riporta il cursore sulla stessa colonna immaginaria
+                    testo_nome = nome_cliente if nome_cliente else "Cliente"
+                    self.cell(100, 8, testo_nome, align="R", ln=1)
+                    
+                    self.ln(20) # Spazio prima di iniziare gli articoli
 
             pdf = PDF()
             pdf.add_page()
@@ -317,10 +321,13 @@ if st.session_state['carrello']:
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
             
-            # Firma
+            # --- SEZIONE FIRMA MICHELE CAVALLO MODIFICATA ---
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
-            pdf.cell(0, 10, "Michele Cavallo - Base Protection srl", align="R")
+            pdf.cell(0, 6, "Michele Cavallo", align="R", ln=1)
+            pdf.cell(0, 6, "Area Manager", align="R", ln=1)
+            pdf.cell(0, 6, "Base Protection srl", align="R", ln=1)
+            pdf.cell(0, 6, "tel. 389.0199088", align="R", ln=1)
 
             pdf_out = pdf.output()
             
