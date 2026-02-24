@@ -62,6 +62,7 @@ st.sidebar.divider()
 
 note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=400, placeholder="Scrivi qui le tue note (es. tempi di consegna, validità offerta, ecc.)...")
 
+
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
 # =========================================================
@@ -120,7 +121,7 @@ else:
                     if catalogo == "Listino Base":
                         taglie_disponibili = list(range(35, 51))
                     else:
-                        taglie_disponibili = [6, 7, 8, 9, 10, 11, 12]
+                        taglie_disponibili = [6, 7, 8, 9, 10, 11, 12] 
                     
                     if st.button("🔄 Azzera Campi"):
                         for t in taglie_disponibili:
@@ -239,30 +240,8 @@ if st.session_state['carrello']:
                     pdf.add_page()
                     y_inizio = pdf.get_y()
 
-                foto_inserita = False
-                # Gestione immagine sulla destra
-                if dati["Img"].startswith("http"):
-                    try:
-                        res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
-                        if res.status_code == 200:
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                                tmp.write(res.content)
-                                pdf.image(tmp.name, x=155, y=y_inizio, w=35)
-                            os.remove(tmp.name)
-                            foto_inserita = True
-                    except: 
-                        pass
-                
-                if not foto_inserita:
-                    pdf.set_xy(155, y_inizio + 10)
-                    pdf.set_font("helvetica", "I", 9)
-                    pdf.set_text_color(150, 150, 150)
-                    pdf.cell(35, 10, "Foto non disponibile", align="C")
-                    pdf.set_text_color(0, 0, 0)
-                    
-                # Ritorno forzato a sinistra per i testi e blocco allineamento
+                # --- 1. STAMPA DEI TESTI (SEMPRE E SOLO A SINISTRA) ---
                 pdf.set_xy(10, y_inizio)
-
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(135, 7, f"Modello: {art}", ln=1)
                 
@@ -276,16 +255,48 @@ if st.session_state['carrello']:
                     pdf.set_font("helvetica", "I", 9)
                     pdf.cell(135, 5, "Proposta Modello (Nessuna quantità specificata)", ln=1)
                 
-                # Il Subtotale ora è ancorato a SINISTRA, al sicuro dalle immagini
-                if dati['Tot'] > 0:
-                    pdf.set_font("helvetica", "B", 10)
-                    pdf.cell(135, 7, f"Subtotale: {dati['Tot']:.2f} Euro", ln=1)
-                else:
-                    pdf.ln(2)
+                pdf.ln(2) # Piccolo spazio
                 
-                # Aumentato il margine inferiore di sicurezza per le immagini (da +40 a +45)
-                y_fine = max(pdf.get_y(), y_inizio + 45)
-                pdf.set_y(y_fine)
+                # Subtotale forzato esplicitamente a coordinata X = 10 (sinistra)
+                if dati['Tot'] > 0:
+                    pdf.set_x(10) 
+                    pdf.set_font("helvetica", "B", 10)
+                    pdf.cell(135, 6, f"Subtotale: {dati['Tot']:.2f} Euro", ln=1)
+                
+                # Salviamo dove è arrivato il testo
+                y_fine_testo = pdf.get_y()
+
+                # --- 2. GESTIONE IMMAGINE (SEMPRE E SOLO A DESTRA) ---
+                foto_inserita = False
+                y_fine_immagine = y_inizio + 10 # Valore minimo di default
+                
+                if dati["Img"].startswith("http"):
+                    try:
+                        res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
+                        if res.status_code == 200:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                                tmp.write(res.content)
+                                pdf.image(tmp.name, x=155, y=y_inizio, w=35)
+                            os.remove(tmp.name)
+                            foto_inserita = True
+                            # Stimiamo un'altezza media dell'immagine di 30/35 pixel
+                            y_fine_immagine = y_inizio + 35 
+                    except: 
+                        pass
+                
+                if not foto_inserita:
+                    pdf.set_xy(155, y_inizio + 10)
+                    pdf.set_font("helvetica", "I", 9)
+                    pdf.set_text_color(150, 150, 150)
+                    pdf.cell(35, 10, "Foto non disponibile", align="C")
+                    pdf.set_text_color(0, 0, 0)
+                    y_fine_immagine = y_inizio + 20
+                
+                # --- 3. LINEA DI SEPARAZIONE INTELLIGENTE ---
+                # Prende il punto più basso tra i testi a sinistra e la foto a destra
+                y_fine_blocco = max(y_fine_testo, y_fine_immagine)
+                
+                pdf.set_y(y_fine_blocco + 5)
                 pdf.line(10, pdf.get_y(), 200, pdf.get_y())
                 pdf.ln(5)
 
