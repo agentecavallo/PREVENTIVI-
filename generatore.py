@@ -241,7 +241,8 @@ if st.session_state['carrello']:
                             # DIMENSIONI RADDOPPIATE: da 30 a 60
                             self.image(f, 10, 8, 60)
                             break
-                    self.set_font("helvetica", "B", 11)
+                    # AUMENTATA LA DIMENSIONE DEL FONT DEL NOME CLIENTE (da 11 a 15)
+                    self.set_font("helvetica", "B", 15)
                     self.set_xy(100, 15)
                     testo = f"Spett.le {nome_cliente}" if nome_cliente else "Spett.le Cliente"
                     self.cell(100, 10, testo, align="R")
@@ -257,15 +258,30 @@ if st.session_state['carrello']:
                     pdf.add_page()
                     y_inizio = pdf.get_y()
 
+                foto_inserita = False
                 # Immagine a destra (se presente)
                 if dati["Img"].startswith("http"):
                     try:
                         res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
-                            tmp.write(res.content)
-                            pdf.image(tmp.name, x=155, y=y_inizio, w=35)
-                        os.remove(tmp.name)
-                    except: pass
+                        if res.status_code == 200:
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                                tmp.write(res.content)
+                                pdf.image(tmp.name, x=155, y=y_inizio, w=35)
+                            os.remove(tmp.name)
+                            foto_inserita = True
+                    except: 
+                        pass
+                
+                # Se l'immagine non c'è o c'è stato un errore nel caricarla, mostriamo il testo
+                if not foto_inserita:
+                    pdf.set_xy(155, y_inizio + 10)
+                    pdf.set_font("helvetica", "I", 9)
+                    pdf.set_text_color(150, 150, 150) # Colore grigio
+                    pdf.cell(35, 10, "Foto non disponibile", align="C")
+                    pdf.set_text_color(0, 0, 0) # Rimettiamo il colore nero per il testo successivo
+                    
+                # Riposizioniamo il cursore a sinistra per scrivere i dati dell'articolo
+                pdf.set_xy(10, y_inizio)
 
                 # Testo a sinistra
                 pdf.set_font("helvetica", "B", 12)
