@@ -4,7 +4,6 @@ import requests
 from io import BytesIO
 import os
 import tempfile
-import base64
 from fpdf import FPDF
 from datetime import datetime
 
@@ -135,9 +134,8 @@ st.sidebar.divider()
 
 # --- CAMPI: CONDIZIONI COMMERCIALI ---
 st.sidebar.header("⚖️ Condizioni Commerciali")
-campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg fine mese...")
-# --- NUOVO CAMPO TRASPORTO AGGIUNTO QUI ---
-campo_trasporto = st.sidebar.text_input("Trasporto:", placeholder="es. Porto Franco o Franco Partenza...")
+campo_pagamento = st.sidebar.text_input("Pagamento:", placeholder="es. Bonifico 30 gg...")
+campo_trasporto = st.sidebar.text_input("Trasporto:", placeholder="es. Porto Franco...")
 campo_validita = st.sidebar.text_input("Validità Offerta:", placeholder="es. 30 giorni...")
 
 st.sidebar.divider()
@@ -440,32 +438,32 @@ if st.session_state['carrello']:
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
             
-            # --- PAGAMENTO, TRASPORTO, VALIDITA' E PREZZI ---
-            pdf.ln(4) 
+            # --- PAGAMENTO, TRASPORTO, VALIDITA' E PREZZI SULLA STESSA RIGA ---
+            pdf.ln(6) 
+            h_c = 6
             
             if campo_pagamento.strip():
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(28, 6, "Pagamento:")
-                pdf.set_font("helvetica", "", 12)
-                pdf.cell(0, 6, campo_pagamento, ln=1)
+                pdf.set_font("helvetica", "B", 10)
+                pdf.cell(pdf.get_string_width("Pagamento: ") + 2, h_c, "Pagamento:", ln=0)
+                pdf.set_font("helvetica", "", 10)
+                pdf.cell(pdf.get_string_width(campo_pagamento) + 6, h_c, campo_pagamento, ln=0)
 
-            # --- LOGICA TRASPORTO AGGIUNTA NEL PDF ---
             if campo_trasporto.strip():
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(28, 6, "Trasporto:")
-                pdf.set_font("helvetica", "", 12)
-                pdf.cell(0, 6, campo_trasporto, ln=1)
+                pdf.set_font("helvetica", "B", 10)
+                pdf.cell(pdf.get_string_width("Trasporto: ") + 2, h_c, "Trasporto:", ln=0)
+                pdf.set_font("helvetica", "", 10)
+                pdf.cell(pdf.get_string_width(campo_trasporto) + 6, h_c, campo_trasporto, ln=0)
             
             if campo_validita.strip():
-                pdf.set_font("helvetica", "B", 12)
-                pdf.cell(38, 6, "Validità Offerta:")
-                pdf.set_font("helvetica", "", 12)
-                pdf.cell(0, 6, campo_validita, ln=1)
+                pdf.set_font("helvetica", "B", 10)
+                pdf.cell(pdf.get_string_width("Validità: ") + 2, h_c, "Validità:", ln=0)
+                pdf.set_font("helvetica", "", 10)
+                pdf.cell(pdf.get_string_width(campo_validita) + 6, h_c, campo_validita, ln=0)
                 
-            pdf.set_font("helvetica", "B", 12)
-            pdf.cell(16, 6, "Prezzi:")
-            pdf.set_font("helvetica", "", 12)
-            pdf.cell(0, 6, "netti iva esclusa", ln=1)
+            pdf.set_font("helvetica", "B", 10)
+            pdf.cell(pdf.get_string_width("Prezzi: ") + 2, h_c, "Prezzi:", ln=0)
+            pdf.set_font("helvetica", "", 10)
+            pdf.cell(0, h_c, "netti iva esclusa", ln=1)
 
             # --- FIRMA ---
             pdf.ln(10)
