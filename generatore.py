@@ -10,14 +10,24 @@ from fpdf import FPDF
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
 
-# --- TRUCCHETTO CSS PER IL CAMPO VERDE ---
+# --- TRUCCHETTO CSS PER CAMPO E BOTTONI VERDI ---
 st.markdown("""
 <style>
+/* Sfondo verde chiaro per i campi di testo */
 div[data-testid="stTextInput"] input {
-    background-color: #e8f5e9 !important; /* Verde molto chiaro */
-    border: 2px solid #4CAF50 !important; /* Bordo verde scuro */
+    background-color: #e8f5e9 !important; 
+    border: 2px solid #4CAF50 !important; 
     color: #000000 !important;
     font-weight: bold;
+}
+/* Colore verde per i bottoni "Primari" (Aggiungi, Prepara PDF, Scarica) */
+button[kind="primary"] {
+    background-color: #4CAF50 !important;
+    color: white !important;
+    border: none !important;
+}
+button[kind="primary"]:hover {
+    background-color: #45a049 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -54,7 +64,6 @@ df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 # =========================================================
 st.sidebar.header("📋 Dati Documento")
 nome_cliente = st.sidebar.text_input("Nome del Cliente:", placeholder="Ragione Sociale...")
-# NUOVO CAMPO: Nome Referente
 nome_referente = st.sidebar.text_input("Nome Referente:", placeholder="Mario Rossi...")
 
 st.sidebar.divider()
@@ -258,7 +267,8 @@ if st.session_state['carrello']:
             st.rerun()
             
     with c_p2:
-        if st.button("📄 Prepara PDF per il Download", use_container_width=True):
+        # HO AGGIUNTO type="primary" QUI PER FARLO DIVENTARE VERDE!
+        if st.button("📄 Prepara PDF per il Download", use_container_width=True, type="primary"):
             raggruppo = {}
             for r in st.session_state['carrello']:
                 art = r["Articolo"]
@@ -413,13 +423,11 @@ if st.session_state['carrello']:
                 pdf.multi_cell(0, 6, testo_note)
                 pdf.ln(10)
             
-            # --- FIRMA ---
+            # --- FIRMA COMPATTATA A 2 RIGHE ---
             pdf.ln(10)
             pdf.set_font("helvetica", "I", 11)
-            pdf.cell(0, 6, "Michele Cavallo", align="R", ln=1)
-            pdf.cell(0, 6, "Area Manager", align="R", ln=1)
-            pdf.cell(0, 6, "Base Protection srl", align="R", ln=1)
-            pdf.cell(0, 6, "tel. 389.0199088", align="R", ln=1)
+            pdf.cell(0, 6, "Michele Cavallo - Area Manager | Base Protection srl", align="R", ln=1)
+            pdf.cell(0, 6, "Tel. 389.0199088", align="R", ln=1)
 
             pdf_out = pdf.output()
             
