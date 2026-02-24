@@ -143,39 +143,59 @@ st.sidebar.divider()
 note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite a fine PDF):", height=200, placeholder="Scrivi qui le tue note...")
 
 # =========================================================
-# --- PAGINA PRINCIPALE: RICERCA E INSERIMENTO ---
+# --- PAGINA PRINCIPALE: RICERCA UNIFICATA ---
 # =========================================================
 st.title("📄 OFFERTE & ORDINI")
 
-catalogo = st.radio("📂 Scegli in quale Listino cercare:", ["Listino Base", "Listino ATG"], horizontal=True)
-
-if catalogo == "Listino Base":
-    df_corrente = df_base
-    sconto_applicato = (sc1, sc2, sc3)
-else:
-    df_corrente = df_atg
-    sconto_applicato = (sc_atg1, sc_atg2, sc_atg3)
-
-if df_corrente is None:
-    st.warning(f"⚠️ Il file Excel per il '{catalogo}' non è stato trovato nella cartella. Assicurati che i nomi dei file siano 'Listino_agente.xlsx' e 'Listino_ATG.xlsx'.")
+if df_base is None and df_atg is None:
+    st.warning("⚠️ Nessun file Excel trovato. Assicurati che i file 'Listino_agente.xlsx' e 'Listino_ATG.xlsx' siano nella cartella.")
 else:
     st.markdown("### 🟢 :green[Ricerca Articolo]")
-    ricerca = st.text_input("Inserisci nome modello:", placeholder="Digita qui il modello...").upper()
+    ricerca = st.text_input("Inserisci nome modello:", placeholder="Cerca su tutto il catalogo (Base o ATG)...").upper()
 
     if ricerca:
-        risultato = df_corrente[df_corrente['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)]
+        # Prepariamo una lista dove metteremo tutti i risultati trovati
+        risultati_trovati = []
         
-        if not risultato.empty:
-            scelta = st.selectbox("Seleziona l'articolo:", risultato['ARTICOLO'].unique())
-            d = risultato[risultato['ARTICOLO'] == scelta].iloc[0]
+        # Cerchiamo nel listino base
+        if df_base is not None:
+            r_base = df_base[df_base['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)].copy()
+            if not r_base.empty:
+                r_base['CATALOGO_PROVENIENZA'] = "Listino Base"
+                risultati_trovati.append(r_base)
+                
+        # Cerchiamo nel listino ATG
+        if df_atg is not None:
+            r_atg = df_atg[df_atg['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)].copy()
+            if not r_atg.empty:
+                r_atg['CATALOGO_PROVENIENZA'] = "Listino ATG"
+                risultati_trovati.append(r_atg)
+        
+        # Se abbiamo trovato qualcosa uniamo i risultati
+        if risultati_trovati:
+            risultato_completo = pd.concat(risultati_trovati, ignore_index=True)
+            
+            scelta = st.selectbox("Seleziona l'articolo:", risultato_completo['ARTICOLO'].unique())
+            d = risultato_completo[risultato_completo['ARTICOLO'] == scelta].iloc[0]
+            
+            catalogo_selezionato = d['CATALOGO_PROVENIENZA']
+            
+            # Applichiamo sconti e taglie in base al catalogo di provenienza
+            if catalogo_selezionato == "Listino Base":
+                sconto_applicato = (sc1, sc2, sc3)
+                taglie_disponibili = list(range(35, 51))
+            else:
+                sconto_applicato = (sc_atg1, sc_atg2, sc_atg3)
+                taglie_disponibili = [6, 7, 8, 9, 10, 11, 12]
             
             st.divider()
             c1, c2 = st.columns([2, 1])
             
             with c1:
                 st.subheader(f"Modello: {d['ARTICOLO']}")
+                st.caption(f"📍 Trovato in: **{catalogo_selezionato}**") # Mostra all'utente da dove viene
                 
-                if catalogo == "Listino ATG":
+                if catalogo_selezionato == "Listino ATG":
                     st.caption(f"**Rivestimento:** {d.get('RIVESTIMENTO', '-')} | **Q.tà Box:** {d.get('QTA_BOX', '-')} | **Range Taglie:** {d.get('RANGE_TAGLIE', '-')}")
                 
                 prezzo_listino = float(d['LISTINO'])
@@ -197,14 +217,9 @@ else:
                 if modalita == "Specifica Taglie":
                     st.write("**Quantità per Taglia:**")
                     
-                    if catalogo == "Listino Base":
-                        taglie_disponibili = list(range(35, 51))
-                    else:
-                        taglie_disponibili = [6, 7, 8, 9, 10, 11, 12] 
-                    
                     if st.button("🔄 Azzera Campi"):
                         for t in taglie_disponibili:
-                            st.session_state[f"qta_{t}_{catalogo}"] = 0
+                            st.session_state[f"qta_{t}_{catalogo_selezionato}"] = 0
                         st.rerun()
 
                     quantita_taglie = {}
@@ -214,7 +229,7 @@ else:
                         cols = st.columns(8)
                         for j, t in enumerate(chunk):
                             with cols[j]:
-                                key = f"qta_{t}_{catalogo}"
+                                key = f"qta_{t}_{catalogo_selezionato}"
                                 if key not in st.session_state: st.session_state[key] = 0
                                 quantita_taglie[t] = st.number_input(str(t), min_value=0, step=1, key=key)
 
@@ -259,9 +274,11 @@ else:
                         st.image(BytesIO(r.content), caption=d['ARTICOLO'], use_container_width=True)
                     except: 
                         st.write("Immagine non disponibile")
-                elif catalogo == "Listino ATG":
+                elif catalogo_selezionato == "Listino ATG":
                     st.markdown("### 🧤 **Prodotto ATG**")
                     st.write("*(Nessuna immagine nel listino)*")
+        else:
+            st.warning("Nessun articolo trovato con questo nome. Riprova con una parola diversa!")
 
 # =========================================================
 # --- RIEPILOGO E PDF ---
