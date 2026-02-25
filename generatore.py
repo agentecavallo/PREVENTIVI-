@@ -47,9 +47,7 @@ def carica_dati(path, tipo="base"):
     try:
         data = pd.read_excel(path)
         if tipo == "atg":
-            # MODIFICA FATTA QUI: Ora legge 6 colonne (fino alla F) e assegna l'ultima all'IMMAGINE
             data = data.iloc[:, :6]
-            # Assicurati che l'Excel abbia 6 colonne per l'ATG: le prime 5 classiche + la 6^ con il link
             data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE']
         else:
             data.columns = [str(c).strip().upper() for c in data.columns]
@@ -156,40 +154,40 @@ else:
     ricerca = st.text_input("Inserisci nome modello:", placeholder="Cerca su tutto il catalogo (Base o ATG)...").upper()
 
     if ricerca:
-        # Prepariamo una lista dove metteremo tutti i risultati trovati
         risultati_trovati = []
         
-        # Cerchiamo nel listino base
         if df_base is not None:
             r_base = df_base[df_base['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)].copy()
             if not r_base.empty:
                 r_base['CATALOGO_PROVENIENZA'] = "Listino Base"
                 risultati_trovati.append(r_base)
                 
-        # Cerchiamo nel listino ATG
         if df_atg is not None:
             r_atg = df_atg[df_atg['ARTICOLO'].astype(str).str.upper().str.contains(ricerca, na=False)].copy()
             if not r_atg.empty:
                 r_atg['CATALOGO_PROVENIENZA'] = "Listino ATG"
                 risultati_trovati.append(r_atg)
         
-        # Se abbiamo trovato qualcosa uniamo i risultati
         if risultati_trovati:
             risultato_completo = pd.concat(risultati_trovati, ignore_index=True)
-            
             scelta = st.selectbox("Seleziona l'articolo:", risultato_completo['ARTICOLO'].unique())
             d = risultato_completo[risultato_completo['ARTICOLO'] == scelta].iloc[0]
             
             catalogo_selezionato = d['CATALOGO_PROVENIENZA']
             
-            # --- NOVITÀ: RECUPERO LA NORMATIVA DALLA COLONNA 8 (INDICE 7) DEL LISTINO BASE ---
+            # --- CORREZIONE: RICERCA DELLA NORMATIVA ---
             normativa_articolo = ""
-            if catalogo_selezionato == "Listino Base" and len(d) >= 8:
-                valore_normativa = str(d.iloc[7]).strip()
-                if valore_normativa.lower() != "nan" and valore_normativa != "":
-                    normativa_articolo = valore_normativa
+            if catalogo_selezionato == "Listino Base":
+                # Controlla se il file base originale ha almeno 8 colonne
+                if df_base is not None and len(df_base.columns) >= 8:
+                    # Prende il NOME dell'ottava colonna (indice 7) e cerca quel nome
+                    nome_col_normativa = df_base.columns[7]
+                    if nome_col_normativa in d:
+                        valore_normativa = str(d[nome_col_normativa]).strip()
+                        # Scarta i valori vuoti o 'nan'
+                        if valore_normativa.lower() not in ["nan", "none", "", "nat", "null"]:
+                            normativa_articolo = valore_normativa
             
-            # Applichiamo sconti e taglie in base al catalogo di provenienza
             if catalogo_selezionato == "Listino Base":
                 sconto_applicato = (sc1, sc2, sc3)
                 taglie_disponibili = list(range(35, 51))
@@ -204,7 +202,7 @@ else:
                 st.subheader(f"Modello: {d['ARTICOLO']}")
                 st.caption(f"📍 Trovato in: **{catalogo_selezionato}**") 
                 
-                # Mostra la normativa a schermo se esiste
+                # Se l'ha trovata, la mostra a schermo prima ancora di fare il PDF
                 if normativa_articolo:
                     st.caption(f"⚖️ **Normativa:** {normativa_articolo}")
                 
@@ -255,7 +253,7 @@ else:
                                     "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
                                     "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
                                     "Immagine": str(d.get('IMMAGINE', '')).strip(),
-                                    "Normativa": normativa_articolo # Salviamo la normativa nel carrello
+                                    "Normativa": normativa_articolo # Salvato nel carrello
                                 })
                                 aggiunti += 1
                         if aggiunti > 0: 
@@ -276,14 +274,13 @@ else:
                             "Netto U.": f"{prezzo_netto:.2f} €", 
                             "Totale Riga": prezzo_netto * qta_generica,
                             "Immagine": str(d.get('IMMAGINE', '')).strip(),
-                            "Normativa": normativa_articolo # Salviamo la normativa nel carrello
+                            "Normativa": normativa_articolo # Salvato nel carrello
                         })
                         st.success("Modello aggiunto al preventivo!")
                         st.rerun()
                     
             with c2:
                 url = str(d.get('IMMAGINE', '')).strip()
-                # Se c'è un link (sia per Base che per ATG) prova a caricarlo
                 if url.startswith('http'):
                     try:
                         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
@@ -293,7 +290,6 @@ else:
                             st.warning("Immagine non trovata (Errore dal sito).")
                     except Exception: 
                         st.warning("Impossibile caricare l'immagine dal link fornito.")
-                # Se non c'è link ed è ATG, mostra il messaggio di default
                 elif catalogo_selezionato == "Listino ATG":
                     st.markdown("### 🧤 **Prodotto ATG**")
                     st.write("*(Nessuna immagine nel listino per questo articolo)*")
@@ -327,7 +323,6 @@ if st.session_state['carrello']:
             for r in st.session_state['carrello']:
                 art = r["Articolo"]
                 if art not in raggruppo:
-                    # Passiamo anche la normativa al PDF
                     raggruppo[art] = {
                         "T": [], 
                         "Tot": 0, 
@@ -385,9 +380,9 @@ if st.session_state['carrello']:
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(135, 7, f"Modello: {art}", ln=1)
                 
-                # --- NOVITÀ: STAMPA DELLA NORMATIVA SOTTO IL NOME MODELLO ---
+                # --- STAMPA DELLA NORMATIVA ---
                 if dati.get("Normativa"):
-                    pdf.set_font("helvetica", "I", 9) # Font in corsivo, un po' più piccolo
+                    pdf.set_font("helvetica", "I", 9) 
                     pdf.cell(135, 5, f"Normativa: {dati['Normativa']}", ln=1)
                 
                 pdf.set_font("helvetica", "", 10)
@@ -489,7 +484,7 @@ if st.session_state['carrello']:
                 testo_note = note_preventivo.replace('€', 'Euro')
                 pdf.multi_cell(0, 6, testo_note)
             
-            # --- PAGAMENTO, TRASPORTO, VALIDITA' E PREZZI SULLA STESSA RIGA ---
+            # --- PAGAMENTO, TRASPORTO, VALIDITA' E PREZZI ---
             pdf.ln(6) 
             h_c = 6
             
