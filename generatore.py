@@ -50,14 +50,9 @@ def carica_dati(path, tipo="base"):
             data = data.iloc[:, :6]
             data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE']
         else:
-            # Per il Listino Base mettiamo in maiuscolo le colonne esistenti
             nomi_colonne = [str(c).strip().upper() for c in data.columns]
-            
-            # Sappiamo dall'immagine che la colonna F (la numero 6, indice 5) contiene la Normativa.
-            # Rinominiamo forzatamente quella colonna così il programma la trova sempre.
             if len(nomi_colonne) > 5:
                 nomi_colonne[5] = 'NORMATIVA' 
-                
             data.columns = nomi_colonne
         return data
     except Exception as e:
@@ -183,10 +178,8 @@ else:
             
             catalogo_selezionato = d['CATALOGO_PROVENIENZA']
             
-            # --- RECUPERO DELLA NORMATIVA ---
             normativa_articolo = ""
             if catalogo_selezionato == "Listino Base":
-                # Ora la colonna si chiama certamente 'NORMATIVA' grazie alla modifica iniziale
                 valore_normativa = str(d.get('NORMATIVA', '')).strip()
                 if valore_normativa.lower() not in ["nan", "none", "", "nat", "null"]:
                     normativa_articolo = valore_normativa
@@ -205,7 +198,6 @@ else:
                 st.subheader(f"Modello: {d['ARTICOLO']}")
                 st.caption(f"📍 Trovato in: **{catalogo_selezionato}**") 
                 
-                # Mostriamo la normativa a schermo
                 if normativa_articolo:
                     st.caption(f"⚖️ **Normativa:** {normativa_articolo}")
                 
@@ -366,8 +358,19 @@ if st.session_state['carrello']:
                         self.set_font("helvetica", "", 15) 
                         self.set_x(100)
                         self.cell(100, 7, f"c.a. {nome_referente}", align="R", ln=1)
+                        
+                    # --- NOVITÀ: DATA ODIERNA ---
+                    mesi = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+                    oggi = datetime.now()
+                    data_formattata = f"{oggi.day} {mesi[oggi.month - 1]} {oggi.year}"
                     
-                    self.ln(20) 
+                    self.set_font("helvetica", "I", 11) # Font in corsivo, leggermente più piccolo
+                    self.set_text_color(100, 100, 100) # Colore grigio scuro per renderlo elegante
+                    self.set_x(100)
+                    self.cell(100, 7, f"Data: {data_formattata}", align="R", ln=1)
+                    self.set_text_color(0, 0, 0) # Riporto il colore al nero standard
+                    
+                    self.ln(15) # Spazio un po' prima di iniziare con i prodotti
 
             pdf = PDF()
             pdf.add_page()
