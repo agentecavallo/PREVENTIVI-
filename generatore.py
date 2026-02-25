@@ -47,15 +47,15 @@ def carica_dati(path, tipo="base"):
     try:
         data = pd.read_excel(path)
         if tipo == "atg":
-            # Cambiamo :5 in :6 per dire al programma di leggere fino alla colonna F inclusa
-            data = data.iloc[:, :6] 
-            # Aggiungiamo 'IMMAGINE' alla fine dei nomi delle colonne
-            data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE'] 
-            # (Ho eliminato la riga che svuotava le immagini)
+            # MODIFICA FATTA QUI: Ora legge 6 colonne (fino alla F) e assegna l'ultima all'IMMAGINE
+            data = data.iloc[:, :6]
+            # Assicurati che l'Excel abbia 6 colonne per l'ATG: le prime 5 classiche + la 6^ con il link
+            data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE']
         else:
             data.columns = [str(c).strip().upper() for c in data.columns]
         return data
-    except:
+    except Exception as e:
+        st.error(f"Errore nel caricamento del file {path}: {e}")
         return None
 
 df_base = carica_dati('Listino_agente.xlsx', "base")
@@ -270,15 +270,22 @@ else:
                     
             with c2:
                 url = str(d.get('IMMAGINE', '')).strip()
+                # Se c'è un link (sia per Base che per ATG) prova a caricarlo
                 if url.startswith('http'):
                     try:
                         r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
-                        st.image(BytesIO(r.content), caption=d['ARTICOLO'], use_container_width=True)
-                    except: 
-                        st.write("Immagine non disponibile")
+                        if r.status_code == 200:
+                            st.image(BytesIO(r.content), caption=d['ARTICOLO'], use_container_width=True)
+                        else:
+                            st.warning("Immagine non trovata (Errore dal sito).")
+                    except Exception: 
+                        st.warning("Impossibile caricare l'immagine dal link fornito.")
+                # Se non c'è link ed è ATG, mostra il messaggio di default
                 elif catalogo_selezionato == "Listino ATG":
                     st.markdown("### 🧤 **Prodotto ATG**")
-                    st.write("*(Nessuna immagine nel listino)*")
+                    st.write("*(Nessuna immagine nel listino per questo articolo)*")
+                else:
+                    st.write("Immagine non disponibile")
         else:
             st.warning("Nessun articolo trovato con questo nome. Riprova con una parola diversa!")
 
