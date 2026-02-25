@@ -47,9 +47,11 @@ def carica_dati(path, tipo="base"):
     try:
         data = pd.read_excel(path)
         if tipo == "atg":
-            data = data.iloc[:, :5]
-            data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO']
-            data['IMMAGINE'] = ""
+            # Cambiamo :5 in :6 per dire al programma di leggere fino alla colonna F inclusa
+            data = data.iloc[:, :6] 
+            # Aggiungiamo 'IMMAGINE' alla fine dei nomi delle colonne
+            data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE'] 
+            # (Ho eliminato la riga che svuotava le immagini)
         else:
             data.columns = [str(c).strip().upper() for c in data.columns]
         return data
