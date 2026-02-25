@@ -50,7 +50,15 @@ def carica_dati(path, tipo="base"):
             data = data.iloc[:, :6]
             data.columns = ['ARTICOLO', 'RIVESTIMENTO', 'QTA_BOX', 'RANGE_TAGLIE', 'LISTINO', 'IMMAGINE']
         else:
-            data.columns = [str(c).strip().upper() for c in data.columns]
+            # Per il Listino Base mettiamo in maiuscolo le colonne esistenti
+            nomi_colonne = [str(c).strip().upper() for c in data.columns]
+            
+            # Sappiamo dall'immagine che la colonna F (la numero 6, indice 5) contiene la Normativa.
+            # Rinominiamo forzatamente quella colonna così il programma la trova sempre.
+            if len(nomi_colonne) > 5:
+                nomi_colonne[5] = 'NORMATIVA' 
+                
+            data.columns = nomi_colonne
         return data
     except Exception as e:
         st.error(f"Errore nel caricamento del file {path}: {e}")
@@ -175,18 +183,13 @@ else:
             
             catalogo_selezionato = d['CATALOGO_PROVENIENZA']
             
-            # --- CORREZIONE: RICERCA DELLA NORMATIVA ---
+            # --- RECUPERO DELLA NORMATIVA ---
             normativa_articolo = ""
             if catalogo_selezionato == "Listino Base":
-                # Controlla se il file base originale ha almeno 8 colonne
-                if df_base is not None and len(df_base.columns) >= 8:
-                    # Prende il NOME dell'ottava colonna (indice 7) e cerca quel nome
-                    nome_col_normativa = df_base.columns[7]
-                    if nome_col_normativa in d:
-                        valore_normativa = str(d[nome_col_normativa]).strip()
-                        # Scarta i valori vuoti o 'nan'
-                        if valore_normativa.lower() not in ["nan", "none", "", "nat", "null"]:
-                            normativa_articolo = valore_normativa
+                # Ora la colonna si chiama certamente 'NORMATIVA' grazie alla modifica iniziale
+                valore_normativa = str(d.get('NORMATIVA', '')).strip()
+                if valore_normativa.lower() not in ["nan", "none", "", "nat", "null"]:
+                    normativa_articolo = valore_normativa
             
             if catalogo_selezionato == "Listino Base":
                 sconto_applicato = (sc1, sc2, sc3)
@@ -202,7 +205,7 @@ else:
                 st.subheader(f"Modello: {d['ARTICOLO']}")
                 st.caption(f"📍 Trovato in: **{catalogo_selezionato}**") 
                 
-                # Se l'ha trovata, la mostra a schermo prima ancora di fare il PDF
+                # Mostriamo la normativa a schermo
                 if normativa_articolo:
                     st.caption(f"⚖️ **Normativa:** {normativa_articolo}")
                 
@@ -253,7 +256,7 @@ else:
                                     "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
                                     "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
                                     "Immagine": str(d.get('IMMAGINE', '')).strip(),
-                                    "Normativa": normativa_articolo # Salvato nel carrello
+                                    "Normativa": normativa_articolo
                                 })
                                 aggiunti += 1
                         if aggiunti > 0: 
@@ -274,7 +277,7 @@ else:
                             "Netto U.": f"{prezzo_netto:.2f} €", 
                             "Totale Riga": prezzo_netto * qta_generica,
                             "Immagine": str(d.get('IMMAGINE', '')).strip(),
-                            "Normativa": normativa_articolo # Salvato nel carrello
+                            "Normativa": normativa_articolo
                         })
                         st.success("Modello aggiunto al preventivo!")
                         st.rerun()
