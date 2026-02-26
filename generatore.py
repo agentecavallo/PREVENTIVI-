@@ -10,12 +10,6 @@ from datetime import datetime
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
 
-# --- POSIZIONAMENTO LOGO IN ALTO A DESTRA ---
-if os.path.exists('logo.jpg'):
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col3:
-        st.image('logo.jpg', width=60) # Modifica width per regolare la dimensione
-
 # --- TRUCCHETTO CSS PER CAMPO E BOTTONI VERDI ---
 st.markdown("""
 <style>
@@ -154,7 +148,14 @@ note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite 
 # =========================================================
 # --- PAGINA PRINCIPALE: RICERCA UNIFICATA ---
 # =========================================================
-st.title("📄 OFFERTE & ORDINI")
+
+# --- POSIZIONAMENTO LOGO SOPRA LA RICERCA ---
+col_titolo, col_logo = st.columns([8, 1])
+with col_titolo:
+    st.title("📄 OFFERTE & ORDINI")
+with col_logo:
+    if os.path.exists('logo.jpg'):
+        st.image('logo.jpg', width=40) # Logo rimpicciolito in alto a destra
 
 if df_base is None and df_atg is None:
     st.warning("⚠️ Nessun file Excel trovato. Assicurati che i file 'Listino_agente.xlsx' e 'Listino_ATG.xlsx' siano nella cartella.")
@@ -217,12 +218,11 @@ else:
                 # Calcolo lo sconto composto reale
                 moltiplicatore = (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
                 prezzo_netto = prezzo_listino * moltiplicatore
-                sconto_totale_percentuale = (1 - moltiplicatore) * 100
                 
                 # Visualizzazione prezzi
                 st.caption(f"Prezzo di Listino: {prezzo_listino:.2f} €")
-                # Mostro il netto in verde e lo sconto totale in arancione
-                st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €] &nbsp; :orange[(-{sconto_totale_percentuale:.1f}%)]")
+                # Mostro solo il netto in verde (sconto in arancione rimosso)
+                st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
                 
                 st.divider()
                 
@@ -351,13 +351,7 @@ if st.session_state['carrello']:
 
             class PDF(FPDF):
                 def header(self):
-                    # Logo
-                    for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
-                        if os.path.exists(f):
-                            self.image(f, 10, 8, 60)
-                            break
-                            
-                    # Spett.le
+                    # Spett.le (Logo rimosso)
                     self.set_font("helvetica", "", 12)
                     self.set_xy(100, 15)
                     self.cell(100, 6, "Spett.le", align="R", ln=1)
