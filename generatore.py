@@ -10,6 +10,12 @@ from datetime import datetime
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
 
+# --- POSIZIONAMENTO LOGO IN ALTO A DESTRA ---
+if os.path.exists('logo.jpg'):
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col3:
+        st.image('logo.jpg', width=60) # Modifica width per regolare la dimensione
+
 # --- TRUCCHETTO CSS PER CAMPO E BOTTONI VERDI ---
 st.markdown("""
 <style>
@@ -204,14 +210,19 @@ else:
                 if catalogo_selezionato == "Listino ATG":
                     st.caption(f"**Rivestimento:** {d.get('RIVESTIMENTO', '-')} | **Q.tà Box:** {d.get('QTA_BOX', '-')} | **Range Taglie:** {d.get('RANGE_TAGLIE', '-')}")
                 
-                # --- CALCOLO PREZZI ---
+                # --- CALCOLO PREZZI E SCONTO TOTALE ---
                 prezzo_listino = float(d['LISTINO'])
                 s1, s2, s3 = sconto_applicato
-                prezzo_netto = prezzo_listino * (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
                 
-                # Visualizzazione prezzi: Listino piccolo e Netto grande
+                # Calcolo lo sconto composto reale
+                moltiplicatore = (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
+                prezzo_netto = prezzo_listino * moltiplicatore
+                sconto_totale_percentuale = (1 - moltiplicatore) * 100
+                
+                # Visualizzazione prezzi
                 st.caption(f"Prezzo di Listino: {prezzo_listino:.2f} €")
-                st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
+                # Mostro il netto in verde e lo sconto totale in arancione
+                st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €] &nbsp; :orange[(-{sconto_totale_percentuale:.1f}%)]")
                 
                 st.divider()
                 
