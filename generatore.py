@@ -204,9 +204,13 @@ else:
                 if catalogo_selezionato == "Listino ATG":
                     st.caption(f"**Rivestimento:** {d.get('RIVESTIMENTO', '-')} | **Q.tà Box:** {d.get('QTA_BOX', '-')} | **Range Taglie:** {d.get('RANGE_TAGLIE', '-')}")
                 
+                # --- CALCOLO PREZZI ---
                 prezzo_listino = float(d['LISTINO'])
                 s1, s2, s3 = sconto_applicato
                 prezzo_netto = prezzo_listino * (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
+                
+                # Visualizzazione prezzi: Listino piccolo e Netto grande
+                st.caption(f"Prezzo di Listino: {prezzo_listino:.2f} €")
                 st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
                 
                 st.divider()
@@ -359,18 +363,18 @@ if st.session_state['carrello']:
                         self.set_x(100)
                         self.cell(100, 7, f"c.a. {nome_referente}", align="R", ln=1)
                         
-                    # --- NOVITÀ: DATA ODIERNA ---
+                    # DATA ODIERNA
                     mesi = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
                     oggi = datetime.now()
                     data_formattata = f"{oggi.day} {mesi[oggi.month - 1]} {oggi.year}"
                     
-                    self.set_font("helvetica", "I", 11) # Font in corsivo, leggermente più piccolo
-                    self.set_text_color(100, 100, 100) # Colore grigio scuro per renderlo elegante
+                    self.set_font("helvetica", "I", 11)
+                    self.set_text_color(100, 100, 100)
                     self.set_x(100)
                     self.cell(100, 7, f"Data: {data_formattata}", align="R", ln=1)
-                    self.set_text_color(0, 0, 0) # Riporto il colore al nero standard
+                    self.set_text_color(0, 0, 0)
                     
-                    self.ln(15) # Spazio un po' prima di iniziare con i prodotti
+                    self.ln(15)
 
             pdf = PDF()
             pdf.add_page()
@@ -386,7 +390,7 @@ if st.session_state['carrello']:
                 pdf.set_font("helvetica", "B", 12)
                 pdf.cell(135, 7, f"Modello: {art}", ln=1)
                 
-                # --- STAMPA DELLA NORMATIVA ---
+                # STAMPA DELLA NORMATIVA
                 if dati.get("Normativa"):
                     pdf.set_font("helvetica", "I", 9) 
                     pdf.cell(135, 5, f"Normativa: {dati['Normativa']}", ln=1)
