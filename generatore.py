@@ -150,12 +150,19 @@ note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite 
 # =========================================================
 
 # --- POSIZIONAMENTO LOGO SOPRA LA RICERCA ---
-col_titolo, col_logo = st.columns([8, 1])
+col_titolo, col_logo = st.columns([6, 1])
 with col_titolo:
     st.title("📄 OFFERTE & ORDINI")
 with col_logo:
-    if os.path.exists('logo.jpg'):
-        st.image('logo.jpg', width=40) # Logo rimpicciolito in alto a destra
+    logo_trovato = False
+    for nome_file in ["logo.jpg", "logo.png", "logo.jpeg", "logo.JPG", "logo.PNG"]:
+        if os.path.exists(nome_file):
+            st.image(nome_file, width=80) 
+            logo_trovato = True
+            break
+            
+    if not logo_trovato:
+        st.warning("⚠️ Logo assente")
 
 if df_base is None and df_atg is None:
     st.warning("⚠️ Nessun file Excel trovato. Assicurati che i file 'Listino_agente.xlsx' e 'Listino_ATG.xlsx' siano nella cartella.")
@@ -217,12 +224,32 @@ else:
                 
                 # Calcolo lo sconto composto reale
                 moltiplicatore = (1 - s1/100) * (1 - s2/100) * (1 - s3/100)
-                prezzo_netto = prezzo_listino * moltiplicatore
+                prezzo_netto_calcolato = prezzo_listino * moltiplicatore
                 
-                # Visualizzazione prezzi
                 st.caption(f"Prezzo di Listino: {prezzo_listino:.2f} €")
-                # Mostro solo il netto in verde (sconto in arancione rimosso)
-                st.markdown(f"### Prezzo Netto: :green[{prezzo_netto:.2f} €]")
+                
+                # --- NUOVA SEZIONE: PREZZO AUTOMATICO VS MANUALE ---
+                col_prezzo_auto, col_prezzo_man = st.columns(2)
+                
+                with col_prezzo_auto:
+                    st.markdown(f"### Prezzo Netto: :green[{prezzo_netto_calcolato:.2f} €]")
+                
+                with col_prezzo_man:
+                    prezzo_netto_manuale = st.number_input(
+                        "Modifica Prezzo Netto (€):", 
+                        min_value=0.0, 
+                        value=0.0, 
+                        step=0.10, 
+                        format="%.2f",
+                        help="Se lasci 0.00, verrà usato il prezzo netto calcolato in automatico."
+                    )
+                
+                # Decidiamo quale prezzo usare alla fine
+                if prezzo_netto_manuale > 0.0:
+                    prezzo_netto_finale = prezzo_netto_manuale
+                    st.info(f"💡 Stai forzando il prezzo a: **{prezzo_netto_finale:.2f} €**")
+                else:
+                    prezzo_netto_finale = prezzo_netto_calcolato
                 
                 st.divider()
                 
@@ -261,7 +288,7 @@ else:
                             if q > 0:
                                 st.session_state['carrello'].append({
                                     "Articolo": d['ARTICOLO'], "Taglia": t, "Quantità": q,
-                                    "Netto U.": f"{prezzo_netto:.2f} €", "Totale Riga": prezzo_netto * q,
+                                    "Netto U.": f"{prezzo_netto_finale:.2f} €", "Totale Riga": prezzo_netto_finale * q,
                                     "Immagine": str(d.get('IMMAGINE', '')).strip(),
                                     "Normativa": normativa_articolo
                                 })
@@ -281,8 +308,8 @@ else:
                             "Articolo": d['ARTICOLO'], 
                             "Taglia": "-", 
                             "Quantità": qta_generica,
-                            "Netto U.": f"{prezzo_netto:.2f} €", 
-                            "Totale Riga": prezzo_netto * qta_generica,
+                            "Netto U.": f"{prezzo_netto_finale:.2f} €", 
+                            "Totale Riga": prezzo_netto_finale * qta_generica,
                             "Immagine": str(d.get('IMMAGINE', '')).strip(),
                             "Normativa": normativa_articolo
                         })
