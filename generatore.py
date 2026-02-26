@@ -149,20 +149,16 @@ note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite 
 # --- PAGINA PRINCIPALE: RICERCA UNIFICATA ---
 # =========================================================
 
-# --- POSIZIONAMENTO LOGO SOPRA LA RICERCA ---
+# --- POSIZIONAMENTO LOGO MICHELONE SOPRA LA RICERCA ---
 col_titolo, col_logo = st.columns([6, 1])
 with col_titolo:
     st.title("📄 OFFERTE & ORDINI")
 with col_logo:
-    logo_trovato = False
-    for nome_file in ["logo.jpg", "logo.png", "logo.jpeg", "logo.JPG", "logo.PNG"]:
-        if os.path.exists(nome_file):
-            st.image(nome_file, width=80) 
-            logo_trovato = True
-            break
-            
-    if not logo_trovato:
-        st.warning("⚠️ Logo assente")
+    michelone_logo = "michelone.jpg"
+    if os.path.exists(michelone_logo):
+        st.image(michelone_logo, width=80) 
+    else:
+        st.warning("⚠️ Michelone assente")
 
 if df_base is None and df_atg is None:
     st.warning("⚠️ Nessun file Excel trovato. Assicurati che i file 'Listino_agente.xlsx' e 'Listino_ATG.xlsx' siano nella cartella.")
@@ -238,14 +234,14 @@ else:
                     prezzo_netto_manuale = st.number_input(
                         "Modifica Prezzo Netto (€):", 
                         min_value=0.0, 
-                        value=0.0, 
+                        value=None,  # Casella vuota all'inizio
                         step=0.10, 
                         format="%.2f",
-                        help="Se lasci 0.00, verrà usato il prezzo netto calcolato in automatico."
+                        help="Se lasci la casella vuota, verrà usato il prezzo netto calcolato in automatico."
                     )
                 
                 # Decidiamo quale prezzo usare alla fine
-                if prezzo_netto_manuale > 0.0:
+                if prezzo_netto_manuale is not None and prezzo_netto_manuale > 0.0:
                     prezzo_netto_finale = prezzo_netto_manuale
                     st.info(f"💡 Stai forzando il prezzo a: **{prezzo_netto_finale:.2f} €**")
                 else:
@@ -301,15 +297,15 @@ else:
                 
                 else:
                     st.info("💡 In questa modalità puoi inserire l'articolo senza specificare le taglie.")
-                    qta_generica = st.number_input("Quantità generica totale:", min_value=0, step=1, value=0, key="qta_gen")
+                    qta_generica = st.number_input("Quantità generica totale:", min_value=0, step=1, value=None, key="qta_gen")
                     
                     if st.button("🛒 Aggiungi Modello", use_container_width=True, type="primary"):
                         st.session_state['carrello'].append({
                             "Articolo": d['ARTICOLO'], 
                             "Taglia": "-", 
-                            "Quantità": qta_generica,
+                            "Quantità": qta_generica if qta_generica is not None else 0,
                             "Netto U.": f"{prezzo_netto_finale:.2f} €", 
-                            "Totale Riga": prezzo_netto_finale * qta_generica,
+                            "Totale Riga": prezzo_netto_finale * (qta_generica if qta_generica is not None else 0),
                             "Immagine": str(d.get('IMMAGINE', '')).strip(),
                             "Normativa": normativa_articolo
                         })
@@ -378,7 +374,14 @@ if st.session_state['carrello']:
 
             class PDF(FPDF):
                 def header(self):
-                    # Spett.le (Logo rimosso)
+                    # Logo.png raddoppiato (70 pixel) in alto a sinistra
+                    for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
+                        if os.path.exists(f):
+                            # Larghezza raddoppiata a 70
+                            self.image(f, 10, 8, 70) 
+                            break
+                            
+                    # Spett.le
                     self.set_font("helvetica", "", 12)
                     self.set_xy(100, 15)
                     self.cell(100, 6, "Spett.le", align="R", ln=1)
