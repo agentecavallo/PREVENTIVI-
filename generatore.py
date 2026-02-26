@@ -374,7 +374,7 @@ if st.session_state['carrello']:
 
             class PDF(FPDF):
                 def header(self):
-                    # Logo.png raddoppiato (70 pixel) in alto a sinistra
+                    # Logo.png raddoppiato (60 pixel) in alto a sinistra
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
                             # Larghezza raddoppiata a 70
