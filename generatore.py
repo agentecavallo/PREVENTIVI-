@@ -62,6 +62,13 @@ def carica_dati(path, tipo="base"):
 df_base = carica_dati('Listino_agente.xlsx', "base")
 df_atg = carica_dati('Listino_ATG.xlsx', "atg")
 
+# --- HEADERS PER INGANNARE I SITI DI HOSTING ---
+miei_headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Referer': 'https://postimg.cc/'
+}
+
 # =========================================================
 # --- SIDEBAR: DATI CLIENTE, SCONTI, NOTE E ESPOSITORI ---
 # =========================================================
@@ -316,13 +323,14 @@ else:
                 url = str(d.get('IMMAGINE', '')).strip()
                 if url.startswith('http'):
                     try:
-                        r = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=5)
+                        # QUI LA MODIFICA PER MOSTRARE A SCHERMO LE IMMAGINI BLOCCATE (ES. LUMIAR)
+                        r = requests.get(url, headers=miei_headers, timeout=5)
                         if r.status_code == 200:
                             st.image(BytesIO(r.content), caption=d['ARTICOLO'], use_container_width=True)
                         else:
-                            st.warning("Immagine non trovata (Errore dal sito).")
-                    except Exception: 
-                        st.warning("Impossibile caricare l'immagine dal link fornito.")
+                            st.warning(f"Immagine non trovata. Il sito ha risposto con Errore: {r.status_code}")
+                    except Exception as e: 
+                        st.warning(f"Impossibile caricare l'immagine. Errore tecnico: {e}")
                 elif catalogo_selezionato == "Listino ATG":
                     st.markdown("### 🧤 **Prodotto ATG**")
                     st.write("*(Nessuna immagine nel listino per questo articolo)*")
@@ -454,9 +462,13 @@ if st.session_state['carrello']:
                 
                 if dati["Img"].startswith("http"):
                     try:
-                        res = requests.get(dati["Img"], headers={'User-Agent': 'Mozilla/5.0'}, timeout=3)
+                        # QUI LA SECONDA MODIFICA PER GESTIRE I .PNG COME BARISTA E I BLOCCHI (LUMIAR)
+                        res = requests.get(dati["Img"], headers=miei_headers, timeout=5)
                         if res.status_code == 200:
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+                            # Controlliamo l'estensione dinamicamente
+                            estensione = ".png" if ".png" in dati["Img"].lower() else ".jpg"
+                            
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=estensione) as tmp:
                                 tmp.write(res.content)
                                 pdf.image(tmp.name, x=155, y=y_inizio, w=35)
                             os.remove(tmp.name)
