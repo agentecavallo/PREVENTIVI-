@@ -399,7 +399,7 @@ if st.session_state['carrello']:
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
                             # Larghezza (w) passata da 100 a 50 (dimezzato), posizione Y passata da 8 a 4 (più in alto)
-                            self.image(f, 5, 4, 80) 
+                            self.image(f, 5, 4, 70) 
                             break
                             
                     # Spett.le
