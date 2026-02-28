@@ -382,11 +382,11 @@ if st.session_state['carrello']:
 
             class PDF(FPDF):
                 def header(self):
-                    # Logo.png in alto a sinistra a 55 pixel
+                    # Logo.png in alto a sinistra, spostato più a sinistra e ingrandito
                     for f in ["logo.png", "logo.jpg", "logo.jpeg"]:
                         if os.path.exists(f):
-                            # Larghezza impostata a 55
-                            self.image(f, 10, 8, 55) 
+                            # Larghezza impostata a 100 (ingrandito), posizione X spostata a 5 (più a sinistra)
+                            self.image(f, 5, 8, 100) #
                             break
                             
                     # Spett.le
