@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import requests
-from io import BytesIO
+import base64
 import os
 import tempfile
 from fpdf import FPDF
 from datetime import datetime
+from io import BytesIO
 
 # Configurazione della pagina
 st.set_page_config(page_title="Generatore Preventivi", layout="wide", page_icon="📄")
@@ -157,15 +158,27 @@ note_preventivo = st.sidebar.text_area("📝 Note Aggiuntive (verranno inserite 
 # =========================================================
 
 # --- POSIZIONAMENTO LOGO MICHELONE SOPRA LA RICERCA ---
-col_titolo, col_logo = st.columns([6, 1])
-with col_titolo:
-    st.title("📄 OFFERTE & ORDINI")
-with col_logo:
-    michelone_logo = "michelone.jpg"
-    if os.path.exists(michelone_logo):
-        st.image(michelone_logo, width=80) 
-    else:
-        st.warning("⚠️ Michelone assente")
+michelone_logo = "michelone.jpg"
+logo_html = ""
+
+if os.path.exists(michelone_logo):
+    with open(michelone_logo, "rb") as image_file:
+        encoded_string = base64.b64encode(image_file.read()).decode()
+    # margin-left a 100px per staccarlo dal testo del titolo, width a 100px per la grandezza
+    logo_html = f'<img src="data:image/jpeg;base64,{encoded_string}" style="width: 100px; border-radius: 8px; margin-left: 100px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">'
+else:
+    logo_html = '<span style="color:red; margin-left: 100px;">⚠️ Michelone assente</span>'
+
+st.markdown(
+    f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <h1 style="margin: 0;">📄 OFFERTE & ORDINI</h1>
+        {logo_html}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 
 if df_base is None and df_atg is None:
     st.warning("⚠️ Nessun file Excel trovato. Assicurati che i file 'Listino_agente.xlsx' e 'Listino_ATG.xlsx' siano nella cartella.")
